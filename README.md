@@ -47,7 +47,7 @@ tools/snapshot.sh     # renders preview PNGs of every mood and tab to build/snap
 - `Sources/PetView.swift`: the 20x18 pixel panda sprite and its faces per mood.
 - `Sources/Theme.swift`: pixel fonts, colors, window frames, buttons, and the
   square-wave sound effects (synthesized in code, no audio files).
-- `Sources/CardView.swift`: the speech bubble and the Chat, Timer, Notes card.
+- `Sources/CardView.swift`: the Talk, Quest and Log card.
 - `Sources/Chat.swift`: the Claude Messages API client over plain HTTP.
 - `Sources/Pomodoro.swift`, `Sources/Notes.swift`, `Sources/PetModel.swift`: state.
 
