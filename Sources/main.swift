@@ -44,6 +44,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var lastMouse = NSPoint.zero
     var cancellables = Set<AnyCancellable>()
     var lidWasClosed = false
+    /// True while Pip is hidden because the Mac slept or the lid closed
+    /// (not because the user chose Hide).
+    var awayBySystem = false
+    var pausedTimerWhileAway = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         GameFont.register()
@@ -62,16 +66,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         makeStatusItem()
         positionPanel()
 
-        // Quit when the Mac goes to sleep. Screen lock and the screensaver
-        // don't sleep the Mac, so Pip keeps running through those.
-        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification,
-                                                          object: nil, queue: .main) { _ in
-            Task { @MainActor in NSApp.terminate(nil) }
+        // Hide when the Mac goes to sleep and come back when it wakes. Screen
+        // lock and the screensaver don't sleep the Mac, so Pip stays through those.
+        let workspace = NSWorkspace.shared.notificationCenter
+        workspace.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in self.goAway() }
+        }
+        workspace.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                // Waking with the lid shut (external display) doesn't count as coming back.
+                if !Self.isLidClosed() { self.comeBack() }
+            }
         }
 
         // Closing the lid doesn't always sleep the Mac (for example with an
         // external display attached), but it always changes the screen setup.
-        // Quit when the lid goes from open to closed.
+        // Hide when the lid closes and come back when it opens.
         lidWasClosed = Self.isLidClosed()
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [weak self] _ in
@@ -79,25 +91,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in
                 let closed = Self.isLidClosed()
                 defer { self.lidWasClosed = closed }
-                if closed && !self.lidWasClosed { NSApp.terminate(nil); return }
+                if closed && !self.lidWasClosed { self.goAway(); return }
+                if !closed && self.lidWasClosed { self.comeBack(); return }
                 self.positionPanel()
             }
         }
 
-        // Poll the cursor ~20x a second. This drives eye tracking, hover, and
-        // click-through: the window ignores the mouse except over the pet or card.
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in self.pollMouse() }
-        }
-        pollTimer?.tolerance = 0.02
-
-        // Time-based moods (sleepy, end of a pat) are checked once a second.
-        moodTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in self.model.refreshMood() }
-        }
-        moodTimer?.tolerance = 0.3
+        startTimers()
         scheduleBlink()
 
         quipTimer = Timer.scheduledTimer(withTimeInterval: 45 * 60, repeats: true) { [weak self] _ in
@@ -110,11 +110,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         #if DEBUG
         if ProcessInfo.processInfo.environment["PIP_TEST_SLEEP"] != nil {
+            let center = NSWorkspace.shared.notificationCenter
             print("lid closed now:", Self.isLidClosed())
+            model.pomodoro.start()
             model.notes.text += "\nsaved-before-sleep"
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                print("posting willSleep")
-                NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.willSleepNotification, object: nil)
+            func state() -> String { "visible=\(self.panel.isVisible) timerRunning=\(self.model.pomodoro.isRunning) polling=\(self.pollTimer != nil)" }
+            func at(_ t: Double, _ f: @escaping () -> Void) { DispatchQueue.main.asyncAfter(deadline: .now() + t, execute: f) }
+            at(1.5) { center.post(name: NSWorkspace.willSleepNotification, object: nil) }
+            at(1.8) { print("after sleep:", state()) }
+            at(2.5) { center.post(name: NSWorkspace.didWakeNotification, object: nil) }
+            at(2.8) { print("after wake:", state()) }
+            at(3.5) {
+                print("pip says:", self.model.speech ?? "nothing")
+                self.toggleVisible()  // user hides Pip from the menu
+                center.post(name: NSWorkspace.willSleepNotification, object: nil)
+            }
+            at(3.8) { center.post(name: NSWorkspace.didWakeNotification, object: nil) }
+            at(4.1) {
+                print("user-hidden, then sleep and wake:", state())
+                NSApp.terminate(nil)
             }
         }
         #endif
@@ -122,6 +136,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
             guard let self else { return }
             self.model.say(self.model.greeting(), for: 6)
+        }
+    }
+
+    // MARK: Away and back
+
+    /// Poll the cursor ~20x a second for eye tracking, hover and click-through,
+    /// and check time-based moods once a second. Stopped while Pip is away.
+    func startTimers() {
+        stopTimers()
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in self.pollMouse() }
+        }
+        pollTimer?.tolerance = 0.02
+        moodTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in self.model.refreshMood() }
+        }
+        moodTimer?.tolerance = 0.3
+    }
+
+    func stopTimers() {
+        pollTimer?.invalidate(); pollTimer = nil
+        moodTimer?.invalidate(); moodTimer = nil
+    }
+
+    /// Mac is going to sleep or the lid closed: tuck Pip away and pause the timer.
+    func goAway() {
+        guard panel.isVisible, !awayBySystem else { return }  // user already hid it
+        awayBySystem = true
+        pausedTimerWhileAway = model.pomodoro.isRunning
+        if pausedTimerWhileAway { model.pomodoro.pause() }
+        model.expanded = false
+        model.speech = nil
+        model.notes.saveNow()
+        panel.orderOut(nil)
+        stopTimers()
+    }
+
+    /// The user is back: show Pip again with a hello.
+    func comeBack() {
+        guard awayBySystem else { return }
+        awayBySystem = false
+        model.idleSince = Date()
+        model.refreshMood()
+        positionPanel()
+        panel.orderFrontRegardless()
+        startTimers()
+        let message = pausedTimerWhileAway
+            ? "Welcome back! Your quest is paused at \(model.pomodoro.label). Click me to resume."
+            : "Welcome back!"
+        pausedTimerWhileAway = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            self?.model.say(message, for: 6)
         }
     }
 
@@ -281,7 +349,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func toggleVisible() {
-        if panel.isVisible { panel.orderOut(nil) } else { positionPanel(); panel.orderFrontRegardless() }
+        if panel.isVisible {
+            panel.orderOut(nil)
+            stopTimers()
+        } else {
+            awayBySystem = false
+            positionPanel()
+            panel.orderFrontRegardless()
+            startTimers()
+        }
     }
     @objc func openChat() { openTab(.chat) }
     @objc func openTimer() { openTab(.timer) }

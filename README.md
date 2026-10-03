@@ -18,9 +18,11 @@ looks focused during a timer, thinks while Claude replies, and falls asleep
 after 10 minutes without mouse movement. The window is click-through
 everywhere except the pet and the open card.
 
-Pip quits when the Mac goes to sleep or the laptop lid closes, even when an
-external display keeps the Mac awake. It keeps running through screen lock and
-the screensaver. Turn on Open at Login if you want it back after you log in.
+Pip hides when the Mac goes to sleep or the laptop lid closes (even when an
+external display keeps the Mac awake), and comes back when you wake the Mac or
+open the lid. A running focus timer pauses while you're away. It stays through
+screen lock and the screensaver. If you hide Pip from the menu, it stays hidden
+after wake. Turn on Open at Login if you want it back after a restart.
 
 A game controller icon in the menu bar can show or hide Pip, open each tab, start
 a focus session, turn sound effects on or off, toggle Open at Login, and quit.
