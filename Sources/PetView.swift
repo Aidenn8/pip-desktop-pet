@@ -4,8 +4,8 @@ import SwiftUI
 
 typealias Pix = (Int, Int, Character)
 
-/// Pip as 8-bit pixel art: a 20x18 grid where each cell is one "pixel".
-/// The body is fixed; the face (eye patches, eyes, nose, mouth, cheeks) is drawn on top per mood.
+/// Pip as 8-bit pixel art: a 21x18 grid where each cell is one "pixel".
+/// The body is fixed; the face (eyes, tear marks, nose, mouth, cheeks) is drawn on top per mood.
 enum Sprite {
     static let cell: CGFloat = 4
     static var cols: Int { body[0].count }
@@ -13,98 +13,92 @@ enum Sprite {
     static var width: CGFloat { cell * CGFloat(cols) }
     static var height: CGFloat { cell * CGFloat(rows) }
 
-    /// A little sitting panda.
+    /// A little sitting red panda with its ringed tail curled up behind it.
     static let body: [String] = [
-        ".KKKK..........KKKK.",
-        "KXXXXK........KXXXXK",
-        "KXXXKKKKKKKKKKKKXXXK",
-        ".KXKWWWWWWWWWWWWKXK.",
-        ".KWWWWWWWWWWWWWWWWK.",
-        "KWWWWWWWWWWWWWWWWWWK",
-        "KWWWWWWWWWWWWWWWWWWK",
-        "KWWWWWWWWWWWWWWWWWWK",
-        "KWWWWWWWWWWWWWWWWWWK",
-        "KWWWWWWWWWWWWWWWWWWK",
-        "KWWWWWWWWWWWWWWWWWWK",
-        "KGWWWWWWWWWWWWWWWWGK",
-        ".KGWWWWWWWWWWWWWWGK.",
-        "..KKKGWWWWWWWWGKKK..",
-        ".KXXXKWWWWWWWWKXXXK.",
-        ".KXXXKWWWWWWWWKXXXK.",
-        "..KXXXKKKKKKKKXXXK..",
-        "...KKK........KKK...",
+        ".KK............KK....",
+        "KWWK..........KWWK...",
+        "KWNWK........KWNWK...",
+        "KWNNRKKKKKKKKRNNWK...",
+        ".KRRRRRRRRRRRRRRK....",
+        "KRRWWWRRRRRRWWWRRK...",
+        "KRRRRRRRRRRRRRRRRKKK.",
+        "KRRRRRRRRRRRRRRRRKQQK",
+        "KRRRRRRRRRRRRRRRRKQQK",
+        "KRRRRRRRRRRRRRRRRKRRK",
+        "KWRRRRWWWWWWRRRRWKRRK",
+        "KWWRRWWWWWWWWRRWWKQQK",
+        ".KWWWWWWWWWWWWWWKKQQK",
+        "..KKKRRRRRRRRKKK.KRRK",
+        ".KBBBKBBBBBBKBBBKKRRK",
+        ".KBBBKBBBBBBKBBBKKQQK",
+        "..KBBBKKKKKKBBBK.KQQK",
+        "...KKK......KKK...KK.",
     ]
 
     static let colors: [Character: Color] = [
-        "K": Color(red: 0.09, green: 0.09, blue: 0.12),  // outline
-        "X": Color(red: 0.19, green: 0.19, blue: 0.24),  // black fur
-        "W": Color(red: 0.97, green: 0.97, blue: 0.94),  // white fur
-        "G": Color(red: 0.80, green: 0.80, blue: 0.78),  // fur shade
-        "E": .white,                                     // eye
-        "P": Color(red: 0.05, green: 0.05, blue: 0.08),  // pupil
-        "C": Color(red: 1.00, green: 0.55, blue: 0.65),  // cheek
+        "K": Color(red: 0.17, green: 0.08, blue: 0.05),  // outline
+        "R": Color(red: 0.80, green: 0.36, blue: 0.17),  // rust fur
+        "Q": Color(red: 0.95, green: 0.68, blue: 0.42),  // light tail ring
+        "W": Color(red: 0.99, green: 0.96, blue: 0.91),  // white markings
+        "N": Color(red: 0.36, green: 0.15, blue: 0.09),  // inner ear
+        "B": Color(red: 0.25, green: 0.12, blue: 0.08),  // dark legs and chest
+        "T": Color(red: 0.50, green: 0.20, blue: 0.11),  // tear marks
+        "P": Color(red: 0.08, green: 0.04, blue: 0.03),  // eye
+        "E": .white,                                     // eye shine
+        "C": Color(red: 1.00, green: 0.55, blue: 0.62),  // cheek
         "M": Color(red: 0.55, green: 0.15, blue: 0.20),  // open mouth
     ]
 
-    /// Left columns of the two eye patches, and the patch's top row.
-    static let leftPatch = 3, rightPatch = 12, eyeTop = 6
-    static let cheeks = [(2, 11), (3, 11), (16, 11), (17, 11)]
+    /// Left columns of the two eyes, and their top row.
+    static let leftEye = 3, rightEye = 12, eyeTop = 7
+    static let cheeks = [(2, 11), (15, 11)]
 
     /// Face pixels for a mood: (column, row, color key).
     static func face(mood: Mood, gaze: (x: Int, y: Int), blink: Bool) -> [Pix] {
         let e = eyeTop
-        let X: Character = "X", K: Character = "K", E: Character = "E", P: Character = "P"
-        let G: Character = "G", M: Character = "M"
+        let K: Character = "K", P: Character = "P", E: Character = "E"
+        let T: Character = "T", M: Character = "M"
         var px: [Pix] = []
 
-        // Droopy panda eye patches: 5x5, missing the top-outer and bottom-inner corners.
-        for (left, outerTop, innerBottom) in [(leftPatch, leftPatch, leftPatch + 4),
-                                              (rightPatch, rightPatch + 4, rightPatch)] {
-            for r in e..<(e + 5) {
-                for c in left..<(left + 5) {
-                    if (r == e && c == outerTop) || (r == e + 4 && c == innerBottom) { continue }
-                    px.append((c, r, X))
-                }
-            }
-        }
+        // Dark "tear marks" running down from each eye, a red panda signature.
+        px += [(4, e + 3, T), (4, e + 4, T), (13, e + 3, T), (13, e + 4, T)]
 
-        // Eyes sit in the 3x3 middle of each patch.
-        for ex in [leftPatch + 1, rightPatch + 1] {
-            let top = e + 1
+        // Big dark eyes with a white shine that shifts toward the cursor.
+        for ex in [leftEye, rightEye] {
             switch mood {
             case .happy:  // ^ ^
-                px += [(ex, top + 1, E), (ex + 1, top, E), (ex + 2, top + 1, E)]
+                px += [(ex, e + 1, K), (ex + 1, e, K), (ex + 2, e + 1, K)]
             case .sleepy:  // peacefully closed
-                px += [(ex, top + 1, G), (ex + 1, top + 1, G), (ex + 2, top + 1, G)]
+                px += [(ex, e + 1, K), (ex + 1, e + 1, K), (ex + 2, e + 1, K)]
             case _ where blink:
-                px += [(ex, top + 1, G), (ex + 1, top + 1, G), (ex + 2, top + 1, G)]
+                px += [(ex, e + 1, K), (ex + 1, e + 1, K), (ex + 2, e + 1, K)]
             case .focus:  // half-closed, determined
-                for r in (top + 1)...(top + 2) { for c in 0..<3 { px.append((ex + c, r, E)) } }
-                px.append((ex + gaze.x, top + 1, P))
-            case .alert:  // wide open, centered pupil
-                for r in top...(top + 2) { for c in 0..<3 { px.append((ex + c, r, E)) } }
-                px.append((ex + 1, top + 1, P))
-            default:  // idle / thinking: eyes follow the cursor
+                for r in (e + 1)...(e + 2) { for c in 0..<3 { px.append((ex + c, r, P)) } }
+                px.append((ex + gaze.x, e + 1, E))
+            case .alert:  // startled: white eyes, tiny pupils
+                for r in e...(e + 2) { for c in 0..<3 { px.append((ex + c, r, E)) } }
+                px.append((ex + 1, e + 1, P))
+            default:  // idle / thinking: shine follows the cursor
                 let g = mood == .thinking ? (x: 2, y: 0) : gaze
-                for r in top...(top + 2) { for c in 0..<3 { px.append((ex + c, r, E)) } }
-                px.append((ex + g.x, top + g.y, P))
+                for r in e...(e + 2) { for c in 0..<3 { px.append((ex + c, r, P)) } }
+                px.append((ex + g.x, e + g.y, E))
             }
         }
 
-        // Nose, then mouth just below it.
-        px += [(9, e + 4, X), (10, e + 4, X)]
-        let m = e + 5
+        // Nose on the white muzzle, mouth just below.
+        px += [(8, e + 3, K), (9, e + 3, K)]
+        let m = e + 4
         switch mood {
         case .happy:
-            px += [(8, m, K), (9, m, M), (10, m, M), (11, m, K), (9, m + 1, M), (10, m + 1, M)]
+            px += [(7, m, K), (8, m, M), (9, m, M), (10, m, K), (8, m + 1, M), (9, m + 1, M)]
         case .alert:
-            px += [(9, m, M), (10, m, M), (9, m + 1, M), (10, m + 1, M)]
+            px += [(8, m, M), (9, m, M), (8, m + 1, M), (9, m + 1, M)]
         case .thinking:
-            px += [(10, m + 1, K), (11, m + 1, K)]
-        case .sleepy, .focus:
             px += [(9, m + 1, K), (10, m + 1, K)]
+        case .sleepy, .focus:
+            px += [(8, m + 1, K), (9, m + 1, K)]
         case .idle:
-            px += [(8, m, K), (9, m + 1, K), (10, m + 1, K), (11, m, K)]
+            px += [(7, m, K), (8, m + 1, K), (9, m + 1, K), (10, m, K)]
         }
         return px
     }
@@ -123,7 +117,7 @@ struct PetView: View {
         let mood = m.mood
         let gaze = (x: Int(eyes.look.dx) + 1, y: 1 - Int(eyes.look.dy))
         let face = Sprite.face(mood: mood, gaze: gaze, blink: eyes.blink)
-        let cheekAlpha = mood == .happy ? 1.0 : 0.55
+        let cheekAlpha = mood == .happy ? 1.0 : 0.0
 
         ZStack(alignment: .topLeading) {
             Canvas { ctx, _ in

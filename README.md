@@ -1,6 +1,6 @@
 # Pip: a desktop pet for macOS
 
-A small 8-bit pixel panda that lives in the bottom-right corner of your screen,
+A small 8-bit pixel red panda that lives in the bottom-right corner of your screen,
 above every window (including full-screen apps). It's styled like a retro video
 game: pixel-art sprite, RPG-style menu windows, arcade fonts and chiptune sound
 effects. Pip never pops up text on its own. Click it to open a game-menu card with:
@@ -44,7 +44,7 @@ tools/snapshot.sh     # renders preview PNGs of every mood and tab to build/snap
 - `Sources/main.swift`: the borderless, transparent, always-on-top panel, the
   menu bar item, cursor polling for eye tracking and click-through, and the
   Core Animation bobbing and breathing.
-- `Sources/PetView.swift`: the 20x18 pixel panda sprite and its faces per mood.
+- `Sources/PetView.swift`: the 21x18 pixel red panda sprite and its faces per mood.
 - `Sources/Theme.swift`: pixel fonts, colors, window frames, buttons, and the
   square-wave sound effects (synthesized in code, no audio files).
 - `Sources/CardView.swift`: the Talk, Quest and Log card.
