@@ -52,6 +52,17 @@ struct FeatureCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 0) {
+                // Window buttons, like the red and yellow ones on a Mac window.
+                HStack(spacing: 6) {
+                    WindowDot(kind: .close) { m.onQuit?() }
+                        .help("Quit Pip")
+                        .keyboardShortcut("q", modifiers: .command)
+                    WindowDot(kind: .minimize) { m.onMinimize?() }
+                        .help("Minimize Pip. Bring it back from the menu bar icon.")
+                        .keyboardShortcut("m", modifiers: .command)
+                }
+                .padding(.trailing, 12)
+
                 ForEach(Tab.allCases) { t in
                     Button {
                         if tab != t { Chiptune.blip() }
@@ -67,15 +78,18 @@ struct FeatureCard: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    Spacer(minLength: 4)
+                    if t != Tab.allCases.last { Spacer(minLength: 4) }
                 }
-                Button("X") {
+            }
+            // Escape still closes just the menu.
+            .background(
+                Button("") {
                     Chiptune.close()
                     withAnimation(.easeOut(duration: 0.15)) { m.expanded = false }
                 }
-                .buttonStyle(PixelButtonStyle(color: GameColor.red, textColor: GameColor.text))
                 .keyboardShortcut(.cancelAction)
-            }
+                .opacity(0)
+            )
             Rectangle().fill(GameColor.border.opacity(0.25)).frame(height: 2)
 
             switch tab {
@@ -365,6 +379,49 @@ struct PixelToggle: View {
                     Text(detail).font(GameFont.body(17)).foregroundStyle(GameColor.dim)
                 }
             }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Window buttons
+
+/// A pixel-art version of the red and yellow buttons on a Mac window.
+struct WindowDot: View {
+    enum Kind { case close, minimize }
+    let kind: Kind
+    let action: () -> Void
+
+    static let ring = [
+        "..KKK..",
+        ".KFFFK.",
+        "KFFFFFK",
+        "KFFFFFK",
+        "KFFFFFK",
+        ".KFFFK.",
+        "..KKK..",
+    ]
+
+    var body: some View {
+        Button(action: action) {
+            Canvas { ctx, _ in
+                let s: CGFloat = 2.5
+                let fill = kind == .close ? GameColor.red : GameColor.yellow
+                func dot(_ c: Int, _ r: Int, _ color: Color) {
+                    ctx.fill(Path(CGRect(x: CGFloat(c) * s, y: CGFloat(r) * s, width: s, height: s)), with: .color(color))
+                }
+                for (r, row) in Self.ring.enumerated() {
+                    for (c, ch) in row.enumerated() where ch != "." {
+                        dot(c, r, ch == "K" ? GameColor.outline : fill)
+                    }
+                }
+                // × or − in the middle
+                let mark = GameColor.outline.opacity(0.8)
+                let symbol = kind == .close ? [(2, 2), (4, 2), (3, 3), (2, 4), (4, 4)] : [(2, 3), (3, 3), (4, 3)]
+                for (c, r) in symbol { dot(c, r, mark) }
+            }
+            .frame(width: 17.5, height: 17.5)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

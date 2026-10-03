@@ -90,6 +90,11 @@ set. Pip finds it in the usual install locations or through your login shell.
 ## Using Pip
 
 - **Click Pip** to open or close the menu. Press Escape to close it too.
+- **The red and yellow buttons** at the top-left of the menu work like a Mac
+  window's. Red (×, or Command-Q) quits Pip completely. Yellow (−, or
+  Command-M) minimizes Pip: it disappears but keeps running in the menu bar,
+  so timers keep counting. Choose Show Pip from the menu bar icon to bring it
+  back.
 - **The game controller icon** in the menu bar has everything else: show or
   hide Pip, move it to the screen your cursor is on, jump to a tab, start a
   focus session, pick a character, toggle naps and sound effects, toggle Open

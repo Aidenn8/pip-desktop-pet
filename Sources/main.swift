@@ -51,6 +51,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         GameFont.register()
+        model.onMinimize = { [weak self] in self?.minimizePip() }
+        model.onQuit = { [weak self] in self?.quitFromCard() }
         // Recompute the mood when the timer or chat state changes. Deferred one
         // runloop turn because @Published fires before the new value is stored.
         model.pomodoro.objectWillChange.merge(with: model.chat.objectWillChange)
@@ -106,6 +108,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         scheduleBlink()
 
         #if DEBUG
+        if ProcessInfo.processInfo.environment["PIP_TEST_BUTTONS"] != nil {
+            model.expanded = true
+            model.notes.text += "\nsaved-before-quit"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                self.model.onMinimize?()  // same path as the yellow button
+                print("after minimize: visible=\(self.panel.isVisible) menuOpen=\(self.model.expanded) polling=\(self.pollTimer != nil)")
+                self.toggleVisible()  // menu bar: Show Pip
+                print("after Show Pip: visible=\(self.panel.isVisible) polling=\(self.pollTimer != nil)")
+                print("pressing quit")
+                self.model.onQuit?()  // same path as the red button
+            }
+        }
         if ProcessInfo.processInfo.environment["PIP_TEST_SLEEP"] != nil {
             let center = NSWorkspace.shared.notificationCenter
             print("lid closed now:", Self.isLidClosed())
@@ -389,6 +403,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             startTimers()
         }
     }
+    /// Yellow button: tuck Pip away. The app keeps running in the menu bar
+    /// (timers keep counting) until you choose Show Pip there.
+    func minimizePip() {
+        Chiptune.close()
+        model.expanded = false
+        model.notes.saveNow()
+        awayBySystem = false
+        panel.orderOut(nil)
+        stopTimers()
+    }
+
+    /// Red button: quit the whole app.
+    func quitFromCard() {
+        Chiptune.close()
+        // Give the short sound a moment to play before quitting.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { NSApp.terminate(nil) }
+    }
+
     @objc func openChat() { openTab(.chat) }
     @objc func openTimer() { openTab(.timer) }
     @objc func openNotes() { openTab(.notes) }

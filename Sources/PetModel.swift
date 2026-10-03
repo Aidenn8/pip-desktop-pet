@@ -53,6 +53,10 @@ final class PetModel: ObservableObject {
     let chat = ChatModel()
     let notes = NotesModel()
 
+    /// Set by the app: the yellow and red window buttons in the menu.
+    var onMinimize: (() -> Void)?
+    var onQuit: (() -> Void)?
+
     var lastPetted = Date.distantPast
     var idleSince = Date()
 
