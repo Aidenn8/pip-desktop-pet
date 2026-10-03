@@ -67,7 +67,6 @@ MainActor.assumeIsolated {
             let m = PetModel()
             m.expanded = true
             if tab == .chat {
-                m.chat.apiKey = "test"
                 m.chat.lines = [
                     .init(fromUser: true, text: "What's a good way to stay focused?"),
                     .init(fromUser: false, text: "Try a 25-minute focus block with your phone in another room. I'll cheer you on from down here!"),
@@ -85,12 +84,5 @@ MainActor.assumeIsolated {
                to: "\(out)/overlay-hud-\(suffix).png", dark: dark)
         mt.pomodoro.pause()
 
-        // First-run key screen
-        UserDefaults.standard.set("Chat", forKey: "tab")
-        let mk = PetModel()
-        mk.expanded = true
-        mk.chat.apiKey = ""
-        render(Backdrop(dark: dark) { RootView(m: mk); petLayer(mk) }, size: Layout.windowSize,
-               to: "\(out)/overlay-key-\(suffix).png", dark: dark)
     }
 }

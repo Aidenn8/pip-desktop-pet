@@ -89,116 +89,72 @@ struct FeatureCard: View {
 struct ChatTab: View {
     @ObservedObject var chat: ChatModel
     @State private var draft = ""
-    @State private var keyDraft = ""
-    @State private var showSettings = false
     @FocusState private var focused: Bool
 
     var body: some View {
-        if !chat.hasKey || showSettings {
-            keySetup
-        } else {
-            VStack(alignment: .leading, spacing: 10) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 12) {
-                            if chat.lines.isEmpty {
-                                VStack(spacing: 10) {
-                                    Text("PIP WANTS TO TALK!").font(GameFont.title(10)).foregroundStyle(GameColor.yellow)
-                                    Text("Ask anything. Replies come from Claude.")
-                                        .font(GameFont.body(19)).foregroundStyle(GameColor.dim)
-                                }
-                                .frame(maxWidth: .infinity).padding(.top, 70)
+        VStack(alignment: .leading, spacing: 10) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        if chat.lines.isEmpty {
+                            VStack(spacing: 10) {
+                                Text("PIP WANTS TO TALK!").font(GameFont.title(10)).foregroundStyle(GameColor.yellow)
+                                Text("Ask anything. Replies come from Claude through your Claude Code login.")
+                                    .font(GameFont.body(19)).foregroundStyle(GameColor.dim)
+                                    .multilineTextAlignment(.center)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
-                            ForEach(chat.lines) { line in ChatLine(line: line) { chat.markShown(line.id) }.id(line.id) }
-                            if chat.isLoading {
-                                HStack(spacing: 6) {
-                                    Text(PetModel.name.uppercased()).font(GameFont.title(8)).foregroundStyle(GameColor.yellow)
-                                    ThinkingText()
-                                }
-                                .id("loading")
-                            }
+                            .frame(maxWidth: .infinity).padding(.top, 60)
                         }
-                        .padding(.vertical, 4).padding(.trailing, 6)
+                        ForEach(chat.lines) { line in ChatLine(line: line) { chat.markShown(line.id) }.id(line.id) }
+                        if chat.isLoading {
+                            HStack(spacing: 6) {
+                                Text(PetModel.name.uppercased()).font(GameFont.title(8)).foregroundStyle(GameColor.yellow)
+                                ThinkingText()
+                            }
+                            .id("loading")
+                        }
                     }
-                    .onChange(of: chat.lines.count) { _ in
-                        if let last = chat.lines.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
-                    }
+                    .padding(.vertical, 4).padding(.trailing, 6)
                 }
-                HStack(spacing: 8) {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(">").font(GameFont.title(10)).foregroundStyle(GameColor.yellow)
-                        TextField("", text: $draft, prompt: Text("Say something…").foregroundColor(GameColor.dim), axis: .vertical)
-                            .textFieldStyle(.plain)
-                            .font(GameFont.body(19))
-                            .foregroundStyle(GameColor.text)
-                            .lineLimit(1...3)
-                            .focused($focused)
-                            .onSubmit(send)
-                    }
-                    .padding(.horizontal, 10).padding(.vertical, 7)
-                    .background(Rectangle().fill(GameColor.field))
-                    .overlay(Rectangle().stroke(GameColor.border.opacity(0.5), lineWidth: 2))
-                    Button("SEND", action: send)
-                        .buttonStyle(PixelButtonStyle())
-                        .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || chat.isLoading)
+                .onChange(of: chat.lines.count) { _ in
+                    if let last = chat.lines.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
                 }
-                HStack {
-                    Button("CLEAR") { chat.clear() }.disabled(chat.lines.isEmpty)
-                    Spacer()
-                    Button("API KEY") { keyDraft = ""; showSettings = true }
-                }
-                .buttonStyle(.plain)
-                .font(GameFont.title(7))
-                .foregroundStyle(GameColor.dim)
             }
-            .onAppear { focused = true }
+            HStack(spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(">").font(GameFont.title(10)).foregroundStyle(GameColor.yellow)
+                    TextField("", text: $draft, prompt: Text("Say something…").foregroundColor(GameColor.dim), axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .font(GameFont.body(19))
+                        .foregroundStyle(GameColor.text)
+                        .lineLimit(1...3)
+                        .focused($focused)
+                        .onSubmit(send)
+                }
+                .padding(.horizontal, 10).padding(.vertical, 7)
+                .background(Rectangle().fill(GameColor.field))
+                .overlay(Rectangle().stroke(GameColor.border.opacity(0.5), lineWidth: 2))
+                Button("SEND", action: send)
+                    .buttonStyle(PixelButtonStyle())
+                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || chat.isLoading)
+            }
+            HStack {
+                Button("CLEAR") { chat.clear() }.disabled(chat.lines.isEmpty)
+                    .buttonStyle(.plain)
+                Spacer()
+                Text("VIA CLAUDE CODE")
+            }
+            .font(GameFont.title(7))
+            .foregroundStyle(GameColor.dim)
         }
+        .onAppear { focused = true }
     }
 
     private func send() {
         let text = draft
         draft = ""
         chat.send(text)
-    }
-
-    private var keySetup: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("INSERT API KEY").font(GameFont.title(12)).foregroundStyle(GameColor.yellow)
-                .padding(.top, 6)
-            Text("Paste an Anthropic API key to chat with Pip. Get one at console.anthropic.com. It's saved only on this Mac.")
-                .font(GameFont.body(19)).foregroundStyle(GameColor.text)
-                .fixedSize(horizontal: false, vertical: true)
-            SecureField("", text: $keyDraft, prompt: Text("sk-ant-…").foregroundColor(GameColor.dim))
-                .textFieldStyle(.plain)
-                .font(GameFont.body(19))
-                .foregroundStyle(GameColor.text)
-                .padding(.horizontal, 10).padding(.vertical, 7)
-                .background(Rectangle().fill(GameColor.field))
-                .overlay(Rectangle().stroke(GameColor.border.opacity(0.5), lineWidth: 2))
-                .onSubmit(saveKey)
-            HStack(spacing: 10) {
-                Button("OK", action: saveKey)
-                    .buttonStyle(PixelButtonStyle())
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(keyDraft.isEmpty)
-                if chat.hasKey {
-                    Button("BACK") { showSettings = false }
-                        .buttonStyle(PixelButtonStyle(color: GameColor.dim))
-                    Spacer()
-                    Button("DELETE") { chat.forgetKey(); showSettings = false }
-                        .buttonStyle(PixelButtonStyle(color: GameColor.red, textColor: GameColor.text))
-                }
-            }
-            Spacer()
-        }
-    }
-
-    private func saveKey() {
-        guard !keyDraft.isEmpty else { return }
-        chat.saveKey(keyDraft)
-        keyDraft = ""
-        showSettings = false
-        Chiptune.blip()
     }
 }
 

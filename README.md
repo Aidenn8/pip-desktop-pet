@@ -5,9 +5,11 @@ above every window (including full-screen apps). It's styled like a retro video
 game: pixel-art sprite, RPG-style menu windows, arcade fonts and chiptune sound
 effects. Pip never pops up text on its own. Click it to open a game-menu card with:
 
-- **Talk**: chat with Claude (Opus 5.5, low effort for quick replies). Paste an
-  Anthropic API key the first time; it's stored in
-  `~/Library/Application Support/DesktopPet/api_key` with owner-only permissions.
+- **Talk**: chat with Claude through the Claude Code app you're logged into, so
+  it uses your Claude subscription instead of API credits. Each message runs
+  `claude -p` with no tools and low effort, using your default model; later
+  messages resume the same conversation, and CLEAR starts a new one. Needs
+  Claude Code installed and logged in.
 - **Quest**: a Pomodoro focus/break timer with a segmented progress bar. While it
   runs or is paused, a status window sits next to Pip. When time's up, Pip
   shows a "!" badge, hops twice every few seconds and plays a level-up jingle.
@@ -48,7 +50,7 @@ tools/snapshot.sh     # renders preview PNGs of every mood and tab to build/snap
 - `Sources/Theme.swift`: pixel fonts, colors, window frames, buttons, and the
   square-wave sound effects (synthesized in code, no audio files).
 - `Sources/CardView.swift`: the Talk, Quest and Log card.
-- `Sources/Chat.swift`: the Claude Messages API client over plain HTTP.
+- `Sources/Chat.swift`: runs Claude Code headlessly for the chat.
 - `Sources/Pomodoro.swift`, `Sources/Notes.swift`, `Sources/PetModel.swift`: state.
 
 Continuous motion runs in the system compositor, so the app idles under 1% CPU.
