@@ -10,6 +10,8 @@ enum Mood: Equatable {
 /// bottom-right corner, so these numbers are offsets from that corner.
 enum Layout {
     static let windowSize = CGSize(width: 380, height: 580)
+    /// Gap between the window and the screen corner, so Pip isn't jammed into it.
+    static let screenInset: CGFloat = 24
     static let petSize: CGFloat = 104
     static let margin: CGFloat = 14
     static let cardSize = CGSize(width: 340, height: 430)

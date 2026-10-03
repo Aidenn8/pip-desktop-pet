@@ -305,7 +305,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func positionPanel() {
         let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main
         guard let area = screen?.visibleFrame else { return }
-        let origin = NSPoint(x: area.maxX - Layout.windowSize.width, y: area.minY)
+        let origin = NSPoint(x: area.maxX - Layout.windowSize.width - Layout.screenInset,
+                             y: area.minY + Layout.screenInset)
         panel.setFrameOrigin(origin)
     }
 
