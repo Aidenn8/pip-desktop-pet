@@ -51,6 +51,23 @@ MainActor.assumeIsolated {
         render(v, size: CGSize(width: 120, height: 120), to: "\(out)/pet-\(name).png", dark: false)
     }
 
+    // All moods in one strip, for the README.
+    let strip = HStack(spacing: 18) {
+        ForEach(Array(moods.enumerated()), id: \.offset) { _, item in
+            let m = PetModel()
+            let _ = m.forceMood(item.1)
+            let _ = { m.eyes.look = CGVector(dx: -1, dy: 0) }()
+            VStack(spacing: 10) {
+                PetView(m: m, eyes: m.eyes)
+                Text(item.0.uppercased()).font(GameFont.title(8)).foregroundStyle(GameColor.yellow)
+            }
+        }
+    }
+    .padding(.horizontal, 30).padding(.top, 26).padding(.bottom, 22)
+    .pixelWindow(shadow: false)
+    .padding(10)
+    render(strip, size: CGSize(width: 680, height: 170), to: "\(out)/moods.png", dark: true)
+
     // Full overlay: resting pet, unread-reply dot, and each card tab, in light and dark.
     for dark in [false, true] {
         let suffix = dark ? "dark" : "light"
