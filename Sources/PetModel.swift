@@ -12,7 +12,7 @@ enum Layout {
     static let windowSize = CGSize(width: 380, height: 580)
     /// Gap between the window and the screen corner, so Pip isn't jammed into it.
     static let screenInset: CGFloat = 12
-    static let petSize: CGFloat = 104
+    static let petSize: CGFloat = 86
     static let margin: CGFloat = 14
     static let cardSize = CGSize(width: 340, height: 430)
     static var cardBottom: CGFloat { margin + petSize + 6 }

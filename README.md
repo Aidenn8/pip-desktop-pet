@@ -1,6 +1,6 @@
 # Pip: a desktop pet for macOS
 
-A small 8-bit creature that lives in the bottom-right corner of your screen,
+A small 8-bit mint slime with a leaf sprout that lives in the bottom-right corner of your screen,
 above every window (including full-screen apps). It's styled like a retro video
 game: pixel-art sprite, RPG dialog windows, arcade fonts and chiptune sound
 effects. Click it to open a game-menu card with:
@@ -42,7 +42,7 @@ tools/snapshot.sh     # renders preview PNGs of every mood and tab to build/snap
 - `Sources/main.swift`: the borderless, transparent, always-on-top panel, the
   menu bar item, cursor polling for eye tracking and click-through, and the
   Core Animation bobbing and breathing.
-- `Sources/PetView.swift`: the 20x18 pixel sprite, its faces per mood, and the dialog box.
+- `Sources/PetView.swift`: the 20x16 pixel slime sprite, its faces per mood, and the dialog box.
 - `Sources/Theme.swift`: pixel fonts, colors, window frames, buttons, and the
   square-wave sound effects (synthesized in code, no audio files).
 - `Sources/CardView.swift`: the speech bubble and the Chat, Timer, Notes card.

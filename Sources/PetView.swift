@@ -2,86 +2,95 @@ import SwiftUI
 
 // MARK: - Sprite data
 
-/// Pip as 8-bit pixel art: a 20x18 grid where each cell is one "pixel".
+/// Pip as 8-bit pixel art: a 20x16 grid where each cell is one "pixel".
 /// The body is fixed; the face (eyes, mouth, cheeks) is drawn on top per mood.
 typealias Pix = (Int, Int, Character)
 
 enum Sprite {
-    static let cell: CGFloat = 5
-    static let cols = 20
-    static let rows = 18
+    static let cell: CGFloat = 4
+    static var cols: Int { body[0].count }
+    static var rows: Int { body.count }
+    static var width: CGFloat { cell * CGFloat(cols) }
+    static var height: CGFloat { cell * CGFloat(rows) }
 
+    /// A mint jelly slime with a leaf sprout on top.
     static let body: [String] = [
-        "..KK............KK..",
-        ".KDOK..........KODK.",
-        ".KDOOKKKKKKKKKKOODK.",
-        ".KOOOLLLLOOOOOOOOOK.",
-        "KOOLLLOOOOOOOOOOOOOK",
-        "KOLLOOOOOOOOOOOOOOOK",
-        "KOLOOOOOOOOOOOOOOOOK",
-        "KOOOOOOOOOOOOOOOOOOK",
-        "KOOOOOOOOOOOOOOOOOOK",
-        "KOOOOOOOOOOOOOOOOOOK",
+        ".....KKK....KKK.....",
+        "....KGGGK..KGGGK....",
+        ".....KKGGKKGGKK.....",
+        "........KSSK........",
+        ".....KKKKSSKKKK.....",
+        "...KKLLLOOOOOOOKK...",
+        "..KLLHOOOOOOOOOOOK..",
+        ".KLHOOOOOOOOOOOOOOK.",
+        ".KLOOOOOOOOOOOOOODK.",
         "KOOOOOOOOOOOOOOOOODK",
-        "KOOOOOBBBBBBBBOOOODK",
-        "KDOOOBBBBBBBBBBOOODK",
-        "KDOOOBBBBBBBBBBOODDK",
-        ".KDOOOBBBBBBBBOOODK.",
-        ".KDDOOOOOOOOOOOODDK.",
-        "..KDDDKKKKKKKKDDDK..",
-        "...KKK........KKK...",
+        "KOOOOOOOOOOOOOOOOODK",
+        "KOOOOOOOOOOOOOOOOODK",
+        "KDOOOOOOOOOOOOOOOODK",
+        "KDDOOOOOOOOOOOOOODDK",
+        ".KDDDOOOOOOOOOODDDK.",
+        "..KKKKKKKKKKKKKKKK..",
     ]
 
     static let colors: [Character: Color] = [
-        "K": Color(red: 0.23, green: 0.11, blue: 0.08),  // outline
-        "D": Color(red: 0.77, green: 0.37, blue: 0.18),  // shade
-        "O": Color(red: 0.94, green: 0.54, blue: 0.29),  // body
-        "L": Color(red: 1.00, green: 0.75, blue: 0.54),  // highlight
-        "B": Color(red: 1.00, green: 0.84, blue: 0.68),  // belly
+        "K": Color(red: 0.11, green: 0.17, blue: 0.23),  // outline
+        "D": Color(red: 0.18, green: 0.62, blue: 0.48),  // shade
+        "O": Color(red: 0.31, green: 0.82, blue: 0.63),  // body
+        "L": Color(red: 0.66, green: 0.96, blue: 0.84),  // highlight
+        "H": Color(red: 0.92, green: 1.00, blue: 0.97),  // shine
+        "G": Color(red: 0.42, green: 0.75, blue: 0.29),  // leaf
+        "S": Color(red: 0.55, green: 0.35, blue: 0.17),  // stem
         "W": .white,
-        "P": Color(red: 0.10, green: 0.06, blue: 0.13),  // pupil
-        "C": Color(red: 1.00, green: 0.44, blue: 0.54),  // cheek
+        "P": Color(red: 0.08, green: 0.10, blue: 0.16),  // pupil
+        "C": Color(red: 1.00, green: 0.50, blue: 0.62),  // cheek
         "M": Color(red: 0.48, green: 0.12, blue: 0.17),  // open mouth
     ]
 
-    static let leftEye = 5, rightEye = 12, eyeTop = 6
+    static let leftEye = 5, rightEye = 12, eyeTop = 8
+    /// Row of the mouth and cheeks, just under the eyes.
+    static var mouthRow: Int { eyeTop + 4 }
+    static let cheeks = [(3, eyeTop + 4), (4, eyeTop + 4), (15, eyeTop + 4), (16, eyeTop + 4)]
 
     /// Face pixels for a mood: (column, row, color key).
-    static func face(mood: Mood, gaze: (x: Int, y: Int), blink: Bool) -> [(Int, Int, Character)] {
-        var px: [(Int, Int, Character)] = []
+    static func face(mood: Mood, gaze: (x: Int, y: Int), blink: Bool) -> [Pix] {
+        let e = eyeTop, m = mouthRow
+        let K: Character = "K", M: Character = "M", W: Character = "W", P: Character = "P"
+        var px: [Pix] = []
         for ex in [leftEye, rightEye] {
             switch mood {
             case .happy:  // ^ ^
-                px += [(ex, 8, "K"), (ex + 1, 7, "K"), (ex + 2, 8, "K")] as [Pix]
+                px += [(ex, e + 2, K), (ex + 1, e + 1, K), (ex + 2, e + 2, K)] as [Pix]
             case .sleepy:  // peacefully closed
-                px += [(ex, 8, "K"), (ex + 1, 8, "K"), (ex + 2, 8, "K")] as [Pix]
+                px += [(ex, e + 2, K), (ex + 1, e + 2, K), (ex + 2, e + 2, K)] as [Pix]
             case _ where blink:
-                px += [(ex, 8, "K"), (ex + 1, 8, "K"), (ex + 2, 8, "K")] as [Pix]
+                px += [(ex, e + 2, K), (ex + 1, e + 2, K), (ex + 2, e + 2, K)] as [Pix]
             case .focus:  // heavy lids, determined
-                for c in 0..<3 { px.append((ex + c, 7, "K")) }
-                for r in 8...9 { for c in 0..<3 { px.append((ex + c, r, "W")) } }
-                px += [(ex + gaze.x, 8, "P"), (ex + gaze.x, 9, "P")] as [Pix]
+                for c in 0..<3 { px.append((ex + c, e + 1, K)) }
+                for r in (e + 2)...(e + 3) { for c in 0..<3 { px.append((ex + c, r, W)) } }
+                px.append((ex + gaze.x, e + 2, P))
+                px.append((ex + gaze.x, e + 3, P))
             case .alert:  // wide open, tiny pupils
-                for r in 5...9 { for c in 0..<3 { px.append((ex + c, r, "W")) } }
-                px.append((ex + 1, 7, "P"))
+                for r in (e - 1)...(e + 3) { for c in 0..<3 { px.append((ex + c, r, W)) } }
+                px.append((ex + 1, e + 1, P))
             default:  // idle / thinking: eyes follow the cursor
                 let g = mood == .thinking ? (x: 2, y: 0) : gaze
-                for r in eyeTop...(eyeTop + 3) { for c in 0..<3 { px.append((ex + c, r, "W")) } }
-                px.append((ex + g.x, eyeTop + g.y, "P"))
-                px.append((ex + g.x, eyeTop + g.y + 1, "P"))
+                for r in e...(e + 3) { for c in 0..<3 { px.append((ex + c, r, W)) } }
+                px.append((ex + g.x, e + g.y, P))
+                px.append((ex + g.x, e + g.y + 1, P))
             }
         }
         switch mood {
         case .happy:
-            px += [(8, 10, "K"), (9, 10, "M"), (10, 10, "M"), (11, 10, "K"), (9, 11, "M"), (10, 11, "M")] as [Pix]
+            px += [(8, m, K), (9, m, M), (10, m, M), (11, m, K), (9, m + 1, M), (10, m + 1, M)] as [Pix]
         case .alert:
-            px += [(9, 10, "M"), (10, 10, "M"), (9, 11, "M"), (10, 11, "M")] as [Pix]
+            px += [(9, m, M), (10, m, M), (9, m + 1, M), (10, m + 1, M)] as [Pix]
         case .thinking:
-            px += [(10, 11, "K"), (11, 11, "K")] as [Pix]
+            px += [(10, m + 1, K), (11, m + 1, K)] as [Pix]
         case .sleepy, .focus:
-            px += [(9, 11, "K"), (10, 11, "K")] as [Pix]
+            px += [(9, m + 1, K), (10, m + 1, K)] as [Pix]
         case .idle:
-            px += [(8, 10, "K"), (9, 11, "K"), (10, 11, "K"), (11, 10, "K")] as [Pix]
+            px += [(8, m, K), (9, m + 1, K), (10, m + 1, K), (11, m, K)] as [Pix]
         }
         return px
     }
@@ -113,13 +122,13 @@ struct PetView: View {
                         dot(c, r, Sprite.colors[ch]!)
                     }
                 }
-                for (c, r) in [(3, 10), (4, 10), (15, 10), (16, 10)] {
+                for (c, r) in Sprite.cheeks {
                     dot(c, r, Sprite.colors["C"]!.opacity(cheekAlpha))
                 }
                 for (c, r, ch) in face { dot(c, r, Sprite.colors[ch]!) }
             }
-            .frame(width: Sprite.cell * CGFloat(Sprite.cols), height: Sprite.cell * CGFloat(Sprite.rows))
-            .offset(x: 2, y: 8)
+            .frame(width: Sprite.width, height: Sprite.height)
+            .offset(x: (Layout.petSize - Sprite.width) / 2, y: Layout.petSize - Sprite.height - 6)
 
             // Mood decorations, top-right of the head
             Group {
@@ -130,7 +139,7 @@ struct PetView: View {
                 default: EmptyView()
                 }
             }
-            .offset(x: mood == .sleepy ? 66 : 70, y: 0)
+            .offset(x: Layout.petSize - (mood == .sleepy ? 32 : 30), y: 0)
         }
         .frame(width: Layout.petSize, height: Layout.petSize, alignment: .topLeading)
         .contentShape(Rectangle())
@@ -142,8 +151,9 @@ struct PetGround: View {
     var body: some View {
         Canvas { ctx, _ in
             let shade = Color.black.opacity(0.28)
-            ctx.fill(Path(CGRect(x: 22, y: 0, width: 60, height: 4)), with: .color(shade))
-            ctx.fill(Path(CGRect(x: 30, y: 4, width: 44, height: 3)), with: .color(shade))
+            let mid = Layout.petSize / 2
+            ctx.fill(Path(CGRect(x: mid - 28, y: 0, width: 56, height: 4)), with: .color(shade))
+            ctx.fill(Path(CGRect(x: mid - 20, y: 4, width: 40, height: 3)), with: .color(shade))
         }
         .frame(width: Layout.petSize, height: 7)
         .frame(width: Layout.petSize, height: Layout.petSize, alignment: .bottom)
