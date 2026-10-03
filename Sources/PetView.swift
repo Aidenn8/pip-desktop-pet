@@ -37,18 +37,19 @@ enum Sprite {
         "...KKK......KKK...KK.",
     ]
 
+    /// Softened about 18% from full saturation so Pip doesn't pop too loudly on screen.
     static let colors: [Character: Color] = [
         "K": Color(red: 0.17, green: 0.08, blue: 0.05),  // outline
-        "R": Color(red: 0.80, green: 0.36, blue: 0.17),  // rust fur
-        "Q": Color(red: 0.95, green: 0.68, blue: 0.42),  // light tail ring
+        "R": Color(red: 0.80, green: 0.44, blue: 0.28),  // rust fur
+        "Q": Color(red: 0.95, green: 0.73, blue: 0.52),  // light tail ring
         "W": Color(red: 0.99, green: 0.96, blue: 0.91),  // white markings
-        "N": Color(red: 0.36, green: 0.15, blue: 0.09),  // inner ear
-        "B": Color(red: 0.25, green: 0.12, blue: 0.08),  // dark legs and chest
-        "T": Color(red: 0.50, green: 0.20, blue: 0.11),  // tear marks
+        "N": Color(red: 0.36, green: 0.19, blue: 0.14),  // inner ear
+        "B": Color(red: 0.25, green: 0.14, blue: 0.11),  // dark legs and chest
+        "T": Color(red: 0.50, green: 0.25, blue: 0.18),  // tear marks
         "P": Color(red: 0.08, green: 0.04, blue: 0.03),  // eye
         "E": .white,                                     // eye shine
-        "C": Color(red: 1.00, green: 0.55, blue: 0.62),  // cheek
-        "M": Color(red: 0.55, green: 0.15, blue: 0.20),  // open mouth
+        "C": Color(red: 1.00, green: 0.63, blue: 0.69),  // cheek
+        "M": Color(red: 0.55, green: 0.22, blue: 0.26),  // open mouth
     ]
 
     /// Left columns of the two eyes, and their top row.
