@@ -51,6 +51,34 @@ MainActor.assumeIsolated {
         render(v, size: CGSize(width: 120, height: 120), to: "\(out)/pet-\(name).png", dark: false)
     }
 
+    // Every character side by side, for the README and to check each one draws.
+    let characters = HStack(spacing: 26) {
+        ForEach(PetCharacter.all) { character in
+            VStack(spacing: 12) {
+                SpriteCanvas(character: character, gaze: (1, 1))
+                    .frame(height: 72, alignment: .bottom)
+                Text(character.name.uppercased()).font(GameFont.title(8)).foregroundStyle(GameColor.yellow)
+            }
+        }
+    }
+    .padding(.horizontal, 30).padding(.top, 26).padding(.bottom, 22)
+    .pixelWindow(shadow: false)
+    .padding(10)
+    render(characters, size: CGSize(width: 520, height: 160), to: "\(out)/characters.png", dark: true)
+
+    // Every mood for every character, to check all the faces.
+    for character in PetCharacter.all {
+        let strip = HStack(spacing: 14) {
+            ForEach([Mood.idle, .happy, .curious, .sleepy, .thinking, .focus, .alert], id: \.self) { mood in
+                SpriteCanvas(character: character, mood: mood, gaze: (0, 0), blink: false)
+                    .frame(height: 72, alignment: .bottom)
+            }
+        }
+        .padding(16)
+        .background(Color(white: 0.85))
+        render(strip, size: CGSize(width: 7 * 84 + 6 * 14 + 32, height: 104), to: "\(out)/faces-\(character.id).png", dark: false)
+    }
+
     // Hovered: the curious face.
     do {
         let m = PetModel()

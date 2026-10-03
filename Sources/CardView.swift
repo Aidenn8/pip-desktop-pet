@@ -4,6 +4,12 @@ import SwiftUI
 /// which sits in its own layer on top (see main.swift).
 struct RootView: View {
     @ObservedObject var m: PetModel
+    @ObservedObject var settings: PetSettings
+
+    init(m: PetModel) {
+        self.m = m
+        self.settings = m.settings
+    }
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -19,7 +25,7 @@ struct RootView: View {
 
             TimerHUD(pomodoro: m.pomodoro)
                 .padding(.trailing, Layout.margin + Layout.petSize + 4)
-                .padding(.bottom, Layout.margin + Sprite.sideGap)
+                .padding(.bottom, Layout.margin + settings.character.sideGap)
                 .allowsHitTesting(false)
         }
         .frame(width: Layout.windowSize.width, height: Layout.windowSize.height)
@@ -31,13 +37,14 @@ struct FeatureCard: View {
     @AppStorage("tab") private var tab = Tab.chat
 
     enum Tab: String, CaseIterable, Identifiable {
-        case chat = "Chat", timer = "Timer", notes = "Notes"
+        case chat = "Chat", timer = "Timer", notes = "Notes", settings = "Settings"
         var id: String { rawValue }
         var label: String {
             switch self {
             case .chat: return "TALK"
             case .timer: return "QUEST"
             case .notes: return "LOG"
+            case .settings: return "SET"
             }
         }
     }
@@ -50,17 +57,17 @@ struct FeatureCard: View {
                         if tab != t { Chiptune.blip() }
                         tab = t
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 3) {
                             Text("▶").opacity(tab == t ? 1 : 0)
                             Text(t.label)
                         }
-                        .font(GameFont.title(9))
+                        .font(GameFont.title(8))
                         .foregroundStyle(tab == t ? GameColor.yellow : GameColor.dim)
                         .padding(.vertical, 4)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    Spacer(minLength: 6)
+                    Spacer(minLength: 4)
                 }
                 Button("X") {
                     Chiptune.close()
@@ -75,6 +82,7 @@ struct FeatureCard: View {
             case .chat: ChatTab(chat: m.chat)
             case .timer: TimerTab(pomodoro: m.pomodoro)
             case .notes: NotesTab(notes: m.notes)
+            case .settings: SettingsTab(settings: m.settings)
             }
         }
         .padding(.horizontal, 18).padding(.top, 16).padding(.bottom, 16)
@@ -274,5 +282,91 @@ struct NotesTab: View {
                 .overlay(Rectangle().stroke(GameColor.border.opacity(0.5), lineWidth: 2))
             Text("AUTO-SAVED").font(GameFont.title(7)).foregroundStyle(GameColor.dim)
         }
+    }
+}
+
+// MARK: - Settings
+
+struct SettingsTab: View {
+    @ObservedObject var settings: PetSettings
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("CHARACTER").font(GameFont.title(10)).foregroundStyle(GameColor.yellow)
+            HStack(spacing: 8) {
+                ForEach(PetCharacter.all) { character in
+                    CharacterChoice(character: character, selected: settings.characterID == character.id) {
+                        if settings.characterID != character.id { Chiptune.blip() }
+                        settings.characterID = character.id
+                    }
+                }
+            }
+
+            Text("OPTIONS").font(GameFont.title(10)).foregroundStyle(GameColor.yellow)
+                .padding(.top, 4)
+            VStack(alignment: .leading, spacing: 12) {
+                PixelToggle(title: "NAPS", detail: "Sleep at night and after 10 idle minutes", isOn: $settings.naps)
+                PixelToggle(title: "FIDGETS", detail: "A small sway or hop now and then", isOn: $settings.fidgets)
+                PixelToggle(title: "HOVER HOP", detail: "Hop when your cursor arrives", isOn: $settings.hoverHop)
+                PixelToggle(title: "SOUND", detail: "Chiptune sound effects", isOn: $settings.sound)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+/// A character tile: a small preview with its name, outlined when chosen.
+struct CharacterChoice: View {
+    let character: PetCharacter
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 7) {
+                SpriteCanvas(character: character, cell: 2)
+                    .frame(height: 38, alignment: .bottom)
+                Text(character.name.uppercased())
+                    .font(GameFont.title(6))
+                    .foregroundStyle(selected ? GameColor.yellow : GameColor.dim)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .frame(width: 66, height: 70)
+            .background(Rectangle().fill(selected ? GameColor.windowLight : GameColor.field))
+            .overlay(Rectangle().stroke(selected ? GameColor.yellow : GameColor.border.opacity(0.25), lineWidth: 2))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(character.name)
+    }
+}
+
+/// A chunky checkbox row.
+struct PixelToggle: View {
+    let title: String
+    let detail: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Button {
+            isOn.toggle()
+            Chiptune.blip()
+        } label: {
+            HStack(alignment: .top, spacing: 10) {
+                ZStack {
+                    Rectangle().fill(GameColor.field)
+                    Rectangle().stroke(GameColor.border.opacity(0.7), lineWidth: 2)
+                    if isOn { Rectangle().fill(GameColor.yellow).padding(4) }
+                }
+                .frame(width: 16, height: 16)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(GameFont.title(8)).foregroundStyle(isOn ? GameColor.text : GameColor.dim)
+                    Text(detail).font(GameFont.body(17)).foregroundStyle(GameColor.dim)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }

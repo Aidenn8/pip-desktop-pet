@@ -57,6 +57,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: RunLoop.main)
             .sink { [weak self] in self?.model.refreshMood() }
             .store(in: &cancellables)
+        // Settings changes (like turning naps off) can change the mood right away.
+        model.settings.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] in self?.model.refreshMood() }
+            .store(in: &cancellables)
         model.$mood.removeDuplicates()
             .receive(on: RunLoop.main)
             .sink { [weak self] mood in self?.applyMotion(for: mood) }
@@ -257,7 +262,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func fidget() {
-        guard panel.isVisible, !model.expanded, let layer = petHost?.layer,
+        guard model.settings.fidgets, panel.isVisible, !model.expanded, let layer = petHost?.layer,
               [.idle, .focus].contains(model.mood) else { return }
         let px = Sprite.cell
         let a: CAKeyframeAnimation
@@ -281,7 +286,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static let hoverHopCooldown: TimeInterval = 0.5
     private var lastHoverHop = Date.distantPast
     func hoverHop() {
-        guard Date().timeIntervalSince(lastHoverHop) > Self.hoverHopCooldown,
+        guard model.settings.hoverHop, Date().timeIntervalSince(lastHoverHop) > Self.hoverHopCooldown,
               let layer = petHost?.layer else { return }
         lastHoverHop = Date()
         let px = Sprite.cell
@@ -414,9 +419,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func toggleSound() {
-        Chiptune.enabled.toggle()
+        model.settings.sound.toggle()
         Chiptune.blip()
     }
+
+    @objc func toggleNaps() { model.settings.naps.toggle() }
+
+    @objc func chooseCharacter(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String else { return }
+        model.settings.characterID = id
+    }
+
+    @objc func openSettings() { openTab(.settings) }
 
     @objc func quit() { NSApp.terminate(nil) }
 }
@@ -438,8 +452,22 @@ extension AppDelegate: NSMenuDelegate {
         _ = add("Notes…", #selector(openNotes))
         _ = add("Start \(model.pomodoro.focusMinutes)-min Focus", #selector(startFocus))
         menu.addItem(.separator())
+        let characterMenu = NSMenu()
+        for character in PetCharacter.all {
+            let item = NSMenuItem(title: character.name, action: #selector(chooseCharacter(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = character.id
+            item.state = model.settings.characterID == character.id ? .on : .off
+            characterMenu.addItem(item)
+        }
+        let characterItem = NSMenuItem(title: "Character", action: nil, keyEquivalent: "")
+        characterItem.submenu = characterMenu
+        menu.addItem(characterItem)
+        let naps = add("Naps", #selector(toggleNaps))
+        naps.state = model.settings.naps ? .on : .off
         let sound = add("Sound Effects", #selector(toggleSound))
-        sound.state = Chiptune.enabled ? .on : .off
+        sound.state = model.settings.sound ? .on : .off
+        _ = add("Settings…", #selector(openSettings))
         let login = add("Open at Login", #selector(toggleLoginItem))
         login.state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(.separator())

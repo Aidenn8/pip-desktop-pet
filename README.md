@@ -9,9 +9,10 @@ focus timer, and a notepad.
 ![Pip's moods: idle, happy, sleepy, thinking, focus, alert](docs/images/moods.png)
 
 <p>
-  <img src="docs/images/talk.png" width="32%" alt="Talk tab: chat with Claude">
-  <img src="docs/images/quest.png" width="32%" alt="Quest tab: focus timer">
-  <img src="docs/images/log.png" width="32%" alt="Log tab: notes">
+  <img src="docs/images/talk.png" width="24%" alt="Talk tab: chat with Claude">
+  <img src="docs/images/quest.png" width="24%" alt="Quest tab: focus timer">
+  <img src="docs/images/log.png" width="24%" alt="Log tab: notes">
+  <img src="docs/images/settings.png" width="24%" alt="Set tab: characters and options">
 </p>
 
 ## Features
@@ -23,6 +24,8 @@ focus timer, and a notepad.
   bar. While a timer runs or is paused, a small status window sits next to Pip.
   When time's up, Pip shows a "!" badge, hops, and plays a level-up jingle.
 - **Log.** A scratchpad that saves automatically.
+- **Set.** Pick a character and switch behaviors on or off: naps, idle
+  fidgets, the hover hop, and sound effects.
 - **A pet with moods.** Pip's eyes follow your cursor and it blinks. When you
   hover over it, it does a little hop and looks up at you with sparkly eyes. It
   looks happy when you click, determined during a focus session, and shows
@@ -40,6 +43,26 @@ focus timer, and a notepad.
 - **Chiptune sound effects**, synthesized in code. You can turn them off.
 
 ![Focus status window next to Pip](docs/images/status.png)
+
+## Characters
+
+Pip can be a red panda (the default), a panda, a mint slime, or the original
+orange creature. Choose one in the Set tab or from the menu bar icon under
+Character. Every character has the same moods and reactions.
+
+![The four characters: red panda, panda, slime, classic](docs/images/characters.png)
+
+## Settings
+
+All of these are in the Set tab, and some are also in the menu bar icon.
+They're saved between launches.
+
+| Setting | On (default) | Off |
+|---|---|---|
+| Naps | Sleeps from midnight to 6 AM and after 10 idle minutes | Always awake |
+| Fidgets | A small sway or hop every 15 to 30 seconds | Sits completely still |
+| Hover hop | Hops when your cursor arrives | Only the face changes |
+| Sound | Chiptune sound effects | Silent |
 
 ## Install
 
@@ -69,7 +92,8 @@ set. Pip finds it in the usual install locations or through your login shell.
 - **Click Pip** to open or close the menu. Press Escape to close it too.
 - **The game controller icon** in the menu bar has everything else: show or
   hide Pip, move it to the screen your cursor is on, jump to a tab, start a
-  focus session, toggle sound effects, toggle Open at Login, and quit.
+  focus session, pick a character, toggle naps and sound effects, toggle Open
+  at Login, and quit.
 - **Open at Login** brings Pip back after a restart. It's off until you turn
   it on.
 
@@ -106,8 +130,10 @@ for every message.
 Sources/
   main.swift       App startup, the floating window, menu bar item, cursor
                    tracking and click-through, sleep/wake, Core Animation motion
-  PetView.swift    The pixel-art sprite and its face for each mood
-  CardView.swift   The Talk, Quest and Log menu
+  Characters.swift The four characters: pixel grids, colors, and faces per mood
+  PetView.swift    Draws the chosen character and its mood badges
+  Settings.swift   Character choice and on/off options, saved between launches
+  CardView.swift   The Talk, Quest, Log and Set menu
   Theme.swift      Pixel fonts, colors, window frames, buttons, chiptune sounds
   PetModel.swift   Shared state and moods, plus window layout constants
   Chat.swift       Runs Claude Code headlessly for the chat
@@ -127,10 +153,10 @@ tools/snapshot.sh docs/images-new
 
 ## Making it yours
 
-- **Change the character.** Pip is drawn from a grid of letters in
-  `Sources/PetView.swift`, one letter per pixel, with a color for each letter.
-  Edit `Sprite.body` and `Sprite.colors`, then adjust the eye and mouth
-  positions in `Sprite.face`.
+- **Add or change a character.** Each character in `Sources/Characters.swift`
+  is a grid of letters, one letter per pixel, with a color for each letter and
+  a face function that draws its eyes and mouth for every mood. Copy one, edit
+  it, and add it to `PetCharacter.all`.
 - **Move it.** `Layout.screenInset` in `Sources/PetModel.swift` sets how far
   Pip sits from the screen corner.
 - **Change its personality.** The system prompt is at the top of
@@ -142,7 +168,7 @@ Everything stays on your Mac:
 
 - Notes: `~/Library/Application Support/DesktopPet/notes.txt`
 - Chat sessions: Claude Code's normal session history
-- Settings such as timer lengths and sound: macOS user defaults
+- Settings such as your character, timer lengths and sound: macOS user defaults
 
 ## Credits
 

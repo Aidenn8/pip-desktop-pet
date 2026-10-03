@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// What the pet is "feeling". Drives its face and animation.
-enum Mood: Equatable {
+enum Mood: Hashable {
     /// `curious` is the hover face: sparkly eyes looking at you and a small "oh" mouth.
     case idle, happy, curious, sleepy, thinking, focus, alert
 }
@@ -48,6 +48,7 @@ final class PetModel: ObservableObject {
     @Published private(set) var mood: Mood = .idle
 
     let eyes = EyeState()
+    let settings = PetSettings()
     let pomodoro = Pomodoro()
     let chat = ChatModel()
     let notes = NotesModel()
@@ -81,9 +82,11 @@ final class PetModel: ObservableObject {
         if Date().timeIntervalSince(lastPetted) < 2.5 { return .happy }
         if hovering { return .curious }
         if pomodoro.isRunning && pomodoro.phase == .focus { return .focus }
-        if Date().timeIntervalSince(idleSince) > 10 * 60 { return .sleepy }
-        let hour = Calendar.current.component(.hour, from: Date())
-        if hour >= 0 && hour < 6 { return .sleepy }
+        if settings.naps {
+            if Date().timeIntervalSince(idleSince) > 10 * 60 { return .sleepy }
+            let hour = Calendar.current.component(.hour, from: Date())
+            if hour >= 0 && hour < 6 { return .sleepy }
+        }
         return .idle
     }
 
