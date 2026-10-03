@@ -55,8 +55,8 @@ final class PetModel: ObservableObject {
 
     init() {
         pomodoro.onFinish = { [weak self] phase in
-            NSSound(named: "Glass")?.play()
-            self?.say(phase == .focus ? "Focus done! Take a break 🎉" : "Break's over. Back to it?", for: 8)
+            Chiptune.levelUp()
+            self?.say(phase == .focus ? "QUEST COMPLETE! Take a break." : "Break's over. Back to it?", for: 8)
         }
         chat.onReply = { [weak self] text in
             guard let self, !self.expanded else { return }
@@ -115,9 +115,9 @@ final class PetModel: ObservableObject {
 
     static let quips = [
         "Stretch break? Your shoulders will thank you.",
-        "Drink some water! 💧",
+        "Drink some water to restore HP.",
         "Look at something far away for 20 seconds.",
         "You're doing great.",
-        "Need a focus timer? Click me.",
+        "Ready for a new quest? Click me for a focus timer.",
     ]
 }

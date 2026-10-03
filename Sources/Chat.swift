@@ -6,10 +6,12 @@ import Foundation
 @MainActor
 final class ChatModel: ObservableObject {
     struct Line: Identifiable, Equatable {
-        let id = UUID()
+        var id = UUID()
         let fromUser: Bool
         let text: String
         var isError = false
+        /// Set for replies that just arrived, so they type themselves out once.
+        var isNew = false
     }
 
     static let model = "claude-opus-5-5"
@@ -43,6 +45,11 @@ final class ChatModel: ObservableObject {
         APIKeyStore.save(nil)
     }
 
+    /// Stop re-typing a reply once it has been shown.
+    func markShown(_ id: UUID) {
+        if let i = lines.firstIndex(where: { $0.id == id }), lines[i].isNew { lines[i].isNew = false }
+    }
+
     func clear() {
         lines.removeAll()
         history.removeAll()
@@ -62,7 +69,7 @@ final class ChatModel: ObservableObject {
             switch result {
             case .success(let reply):
                 history.append(["role": "assistant", "content": reply.content])
-                lines.append(Line(fromUser: false, text: reply.text))
+                lines.append(Line(fromUser: false, text: reply.text, isNew: true))
                 onReply?(reply.text)
             case .failure(let error):
                 // Drop the unanswered user turn so the next send stays valid.

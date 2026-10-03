@@ -33,6 +33,8 @@ MainActor.assumeIsolated {
     let out = CommandLine.arguments.dropFirst().first ?? "."
     _ = NSApplication.shared
     NSApp.setActivationPolicy(.prohibited)
+    GameFont.register()
+    TypewriterText.enabled = false
 
     // Every mood, pet only.
     let moods: [(String, Mood)] = [("idle", .idle), ("happy", .happy), ("sleepy", .sleepy),
@@ -40,9 +42,9 @@ MainActor.assumeIsolated {
     for (name, mood) in moods {
         let m = PetModel()
         m.forceMood(mood)
-        m.eyes.look = CGVector(dx: -0.7, dy: 0.4)
+        m.eyes.look = CGVector(dx: -1, dy: 1)
         let v = Backdrop(dark: false) {
-            ZStack { PetGround(pomodoro: m.pomodoro); PetView(m: m, eyes: m.eyes) }
+            ZStack { PetGround(); PetView(m: m, eyes: m.eyes) }
                 .frame(width: Layout.petSize, height: Layout.petSize)
                 .padding(8)
         }.frame(width: 120, height: 120)
@@ -76,6 +78,19 @@ MainActor.assumeIsolated {
             render(Backdrop(dark: dark) { RootView(m: m); petLayer(m) }, size: Layout.windowSize,
                    to: "\(out)/overlay-\(tab.rawValue.lowercased())-\(suffix).png", dark: dark)
         }
+        // Timer running: HUD next to the pet
+        let mt = PetModel()
+        mt.pomodoro.start(); mt.pomodoro.remaining = 17 * 60 + 42
+        render(Backdrop(dark: dark) { RootView(m: mt); petLayer(mt) }, size: Layout.windowSize,
+               to: "\(out)/overlay-hud-\(suffix).png", dark: dark)
+        mt.pomodoro.pause()
+
+        // First-run key screen
         UserDefaults.standard.set("Chat", forKey: "tab")
+        let mk = PetModel()
+        mk.expanded = true
+        mk.chat.apiKey = ""
+        render(Backdrop(dark: dark) { RootView(m: mk); petLayer(mk) }, size: Layout.windowSize,
+               to: "\(out)/overlay-key-\(suffix).png", dark: dark)
     }
 }

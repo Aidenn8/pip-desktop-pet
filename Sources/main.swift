@@ -17,6 +17,7 @@ struct PetHostRoot: View {
         PetView(m: m, eyes: m.eyes)
             .onTapGesture {
                 m.petClicked()
+                m.expanded ? Chiptune.blip() : Chiptune.close()
                 (NSApp.delegate as? AppDelegate)?.boing()
             }
             .help("\(PetModel.name): click to open")
@@ -43,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        GameFont.register()
         // Recompute the mood when the timer or chat state changes. Deferred one
         // runloop turn because @Published fires before the new value is stored.
         model.pomodoro.objectWillChange.merge(with: model.chat.objectWillChange)
@@ -129,50 +131,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Motion
 
-    /// Continuous motion runs in the system compositor, not in this process.
-    /// The layer's anchor is its bottom edge, so vertical scaling looks like breathing.
+    /// Motion runs in the system compositor, not in this process. Steps are
+    /// discrete and snapped to the sprite's pixel size, like an 8-bit idle animation.
     func applyMotion(for mood: Mood) {
         guard let layer = petHost?.layer else { return }
         layer.removeAnimation(forKey: "bob")
-        layer.removeAnimation(forKey: "breathe")
         layer.removeAnimation(forKey: "jump")
 
-        func loop(_ keyPath: String, from: CGFloat, to: CGFloat, duration: CFTimeInterval) -> CABasicAnimation {
-            let a = CABasicAnimation(keyPath: keyPath)
-            a.fromValue = from
-            a.toValue = to
+        let px = Sprite.cell
+        func steps(_ values: [CGFloat], duration: CFTimeInterval) -> CAKeyframeAnimation {
+            let a = CAKeyframeAnimation(keyPath: "transform.translation.y")
+            a.values = values
+            a.calculationMode = .discrete
             a.duration = duration
-            a.autoreverses = true
             a.repeatCount = .infinity
-            a.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             return a
         }
 
         switch mood {
         case .alert:
-            let jump = CAKeyframeAnimation(keyPath: "transform.translation.y")
-            jump.values = [0, 14, 0]
-            jump.keyTimes = [0, 0.5, 1]
-            jump.timingFunctions = [CAMediaTimingFunction(name: .easeOut), CAMediaTimingFunction(name: .easeIn)]
-            jump.duration = 0.45
-            jump.repeatCount = .infinity
-            layer.add(jump, forKey: "jump")
+            layer.add(steps([0, px, px * 2, px * 3, px * 2, px], duration: 0.42), forKey: "jump")
         case .sleepy:
-            layer.add(loop("transform.scale.y", from: 0.97, to: 1.02, duration: 2.0), forKey: "breathe")
+            break  // perfectly still, just snoozing
+        case .happy, .thinking:
+            layer.add(steps([0, px], duration: 0.5), forKey: "bob")
         default:
-            layer.add(loop("transform.translation.y", from: -2.5, to: 2.5, duration: 1.2), forKey: "bob")
-            layer.add(loop("transform.scale.y", from: 0.985, to: 1.02, duration: 1.2), forKey: "breathe")
+            layer.add(steps([0, px], duration: 1.1), forKey: "bob")
         }
     }
 
-    /// A quick squash-and-stretch when the pet is clicked.
+    /// A quick pixel hop when the pet is clicked.
     func boing() {
         guard let layer = petHost?.layer else { return }
-        let a = CAKeyframeAnimation(keyPath: "transform.scale.y")
-        a.values = [1, 0.84, 1.1, 0.97, 1]
-        a.keyTimes = [0, 0.2, 0.5, 0.75, 1]
-        a.duration = 0.4
-        layer.add(a, forKey: "boing")
+        let px = Sprite.cell
+        let a = CAKeyframeAnimation(keyPath: "transform.translation.y")
+        a.values = [px, px * 2, px * 3, px * 2, px, 0]
+        a.calculationMode = .discrete
+        a.duration = 0.3
+        layer.add(a, forKey: "hop")
     }
 
     /// Blink every few seconds, sometimes twice. Two tiny redraws per blink.
@@ -226,18 +222,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let dx = p.x - center.x, dy = p.y - center.y
         let dist = max(1, hypot(dx, dy))
         let strength = min(1, dist / 220)
-        let look = CGVector(dx: dx / dist * strength, dy: dy / dist * strength)
-        let old = model.eyes.look
-        if abs(look.dx - old.dx) > 0.06 || abs(look.dy - old.dy) > 0.06 {
-            model.eyes.look = look
-        }
+        func snap(_ v: CGFloat) -> CGFloat { v < -0.33 ? -1 : (v > 0.33 ? 1 : 0) }
+        let look = CGVector(dx: snap(dx / dist * strength), dy: snap(dy / dist * strength))
+        if look != model.eyes.look { model.eyes.look = look }
     }
 
     // MARK: Menu bar
 
     private func makeStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: PetModel.name)
+        statusItem.button?.image = NSImage(systemSymbolName: "gamecontroller.fill", accessibilityDescription: PetModel.name)
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
@@ -275,6 +269,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc func toggleSound() {
+        Chiptune.enabled.toggle()
+        Chiptune.blip()
+    }
+
     @objc func quit() { NSApp.terminate(nil) }
 }
 
@@ -295,6 +294,8 @@ extension AppDelegate: NSMenuDelegate {
         _ = add("Notes…", #selector(openNotes))
         _ = add("Start \(model.pomodoro.focusMinutes)-min Focus", #selector(startFocus))
         menu.addItem(.separator())
+        let sound = add("Sound Effects", #selector(toggleSound))
+        sound.state = Chiptune.enabled ? .on : .off
         let login = add("Open at Login", #selector(toggleLoginItem))
         login.state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(.separator())

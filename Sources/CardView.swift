@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Everything inside the transparent overlay window.
+/// Everything inside the transparent overlay window except the pet itself,
+/// which sits in its own layer on top (see main.swift).
 struct RootView: View {
     @ObservedObject var m: PetModel
 
@@ -13,19 +14,23 @@ struct RootView: View {
                     .frame(width: Layout.cardSize.width, height: Layout.cardSize.height)
                     .padding(.trailing, Layout.margin)
                     .padding(.bottom, Layout.cardBottom)
-                    .transition(.scale(scale: 0.85, anchor: .bottomTrailing).combined(with: .opacity))
+                    .transition(.scale(scale: 0.9, anchor: .bottomTrailing).combined(with: .opacity))
             } else if let speech = m.speech {
                 SpeechBubble(text: speech)
                     .padding(.trailing, Layout.margin + 4)
-                    .padding(.bottom, Layout.margin + Layout.petSize - 2)
-                    .transition(.scale(scale: 0.8, anchor: .bottomTrailing).combined(with: .opacity))
+                    .padding(.bottom, Layout.margin + Layout.petSize + 6)
+                    .transition(.opacity)
                     .allowsHitTesting(false)
             }
 
-            // The pet itself is a separate view layered on top (see main.swift).
-            PetGround(pomodoro: m.pomodoro)
+            PetGround()
                 .padding(.trailing, Layout.margin)
-                .padding(.bottom, Layout.margin)
+                .padding(.bottom, Layout.margin - 4)
+                .allowsHitTesting(false)
+
+            TimerHUD(pomodoro: m.pomodoro)
+                .padding(.trailing, Layout.margin + Layout.petSize + 4)
+                .padding(.bottom, Layout.margin + 6)
                 .allowsHitTesting(false)
         }
         .frame(width: Layout.windowSize.width, height: Layout.windowSize.height)
@@ -39,37 +44,54 @@ struct FeatureCard: View {
     enum Tab: String, CaseIterable, Identifiable {
         case chat = "Chat", timer = "Timer", notes = "Notes"
         var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .chat: return "TALK"
+            case .timer: return "QUEST"
+            case .notes: return "LOG"
+            }
+        }
     }
 
     var body: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Picker("", selection: $tab) {
-                    ForEach(Tab.allCases) { Text($0.rawValue).tag($0) }
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 0) {
+                ForEach(Tab.allCases) { t in
+                    Button {
+                        if tab != t { Chiptune.blip() }
+                        tab = t
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("▶").opacity(tab == t ? 1 : 0)
+                            Text(t.label)
+                        }
+                        .font(GameFont.title(9))
+                        .foregroundStyle(tab == t ? GameColor.yellow : GameColor.dim)
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    Spacer(minLength: 6)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { m.expanded = false }
-                } label: {
-                    Image(systemName: "xmark.circle.fill").font(.system(size: 16)).foregroundStyle(.secondary)
+                Button("X") {
+                    Chiptune.close()
+                    withAnimation(.easeOut(duration: 0.15)) { m.expanded = false }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PixelButtonStyle(color: GameColor.red, textColor: GameColor.text))
                 .keyboardShortcut(.cancelAction)
             }
+            Rectangle().fill(GameColor.border.opacity(0.25)).frame(height: 2)
+
             switch tab {
             case .chat: ChatTab(chat: m.chat)
             case .timer: TimerTab(pomodoro: m.pomodoro)
             case .notes: NotesTab(notes: m.notes)
             }
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.regularMaterial)
-                .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
-        )
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.primary.opacity(0.08)))
+        .padding(.horizontal, 18).padding(.top, 16).padding(.bottom, 16)
+        .pixelWindow()
+        .environment(\.colorScheme, .dark)
+        .tint(GameColor.yellow)
     }
 }
 
@@ -86,47 +108,59 @@ struct ChatTab: View {
         if !chat.hasKey || showSettings {
             keySetup
         } else {
-            VStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 8) {
+                        LazyVStack(alignment: .leading, spacing: 12) {
                             if chat.lines.isEmpty {
-                                Text("Ask \(PetModel.name) anything. Replies come from Claude.")
-                                    .font(.callout).foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity).padding(.top, 40)
+                                VStack(spacing: 10) {
+                                    Text("PIP WANTS TO TALK!").font(GameFont.title(10)).foregroundStyle(GameColor.yellow)
+                                    Text("Ask anything. Replies come from Claude.")
+                                        .font(GameFont.body(19)).foregroundStyle(GameColor.dim)
+                                }
+                                .frame(maxWidth: .infinity).padding(.top, 70)
                             }
-                            ForEach(chat.lines) { line in ChatBubble(line: line).id(line.id) }
+                            ForEach(chat.lines) { line in ChatLine(line: line) { chat.markShown(line.id) }.id(line.id) }
                             if chat.isLoading {
-                                Text("\(PetModel.name) is thinking…").font(.caption).foregroundStyle(.secondary).id("loading")
+                                HStack(spacing: 6) {
+                                    Text(PetModel.name.uppercased()).font(GameFont.title(8)).foregroundStyle(GameColor.yellow)
+                                    ThinkingText()
+                                }
+                                .id("loading")
                             }
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 4).padding(.trailing, 6)
                     }
                     .onChange(of: chat.lines.count) { _ in
                         if let last = chat.lines.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
                     }
                 }
-                HStack(spacing: 6) {
-                    TextField("Message \(PetModel.name)…", text: $draft, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .lineLimit(1...4)
-                        .padding(.horizontal, 10).padding(.vertical, 7)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.06)))
-                        .focused($focused)
-                        .onSubmit(send)
-                    Button(action: send) {
-                        Image(systemName: "arrow.up.circle.fill").font(.system(size: 22))
+                HStack(spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(">").font(GameFont.title(10)).foregroundStyle(GameColor.yellow)
+                        TextField("", text: $draft, prompt: Text("Say something…").foregroundColor(GameColor.dim), axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(GameFont.body(19))
+                            .foregroundStyle(GameColor.text)
+                            .lineLimit(1...3)
+                            .focused($focused)
+                            .onSubmit(send)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(draft.isEmpty || chat.isLoading ? Color.secondary : Palette.body)
-                    .disabled(draft.isEmpty || chat.isLoading)
+                    .padding(.horizontal, 10).padding(.vertical, 7)
+                    .background(Rectangle().fill(GameColor.field))
+                    .overlay(Rectangle().stroke(GameColor.border.opacity(0.5), lineWidth: 2))
+                    Button("SEND", action: send)
+                        .buttonStyle(PixelButtonStyle())
+                        .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || chat.isLoading)
                 }
                 HStack {
-                    Button("Clear chat") { chat.clear() }.disabled(chat.lines.isEmpty)
+                    Button("CLEAR") { chat.clear() }.disabled(chat.lines.isEmpty)
                     Spacer()
-                    Button("API key…") { keyDraft = ""; showSettings = true }
+                    Button("API KEY") { keyDraft = ""; showSettings = true }
                 }
-                .buttonStyle(.link).font(.caption)
+                .buttonStyle(.plain)
+                .font(GameFont.title(7))
+                .foregroundStyle(GameColor.dim)
             }
             .onAppear { focused = true }
         }
@@ -139,19 +173,31 @@ struct ChatTab: View {
     }
 
     private var keySetup: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Connect to Claude").font(.headline)
-            Text("Paste an Anthropic API key to chat. Get one at console.anthropic.com. It's saved only on this Mac.")
-                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            SecureField("sk-ant-…", text: $keyDraft)
-                .textFieldStyle(.roundedBorder)
+        VStack(alignment: .leading, spacing: 14) {
+            Text("INSERT API KEY").font(GameFont.title(12)).foregroundStyle(GameColor.yellow)
+                .padding(.top, 6)
+            Text("Paste an Anthropic API key to chat with Pip. Get one at console.anthropic.com. It's saved only on this Mac.")
+                .font(GameFont.body(19)).foregroundStyle(GameColor.text)
+                .fixedSize(horizontal: false, vertical: true)
+            SecureField("", text: $keyDraft, prompt: Text("sk-ant-…").foregroundColor(GameColor.dim))
+                .textFieldStyle(.plain)
+                .font(GameFont.body(19))
+                .foregroundStyle(GameColor.text)
+                .padding(.horizontal, 10).padding(.vertical, 7)
+                .background(Rectangle().fill(GameColor.field))
+                .overlay(Rectangle().stroke(GameColor.border.opacity(0.5), lineWidth: 2))
                 .onSubmit(saveKey)
-            HStack {
-                Button("Save", action: saveKey).keyboardShortcut(.defaultAction).disabled(keyDraft.isEmpty)
+            HStack(spacing: 10) {
+                Button("OK", action: saveKey)
+                    .buttonStyle(PixelButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(keyDraft.isEmpty)
                 if chat.hasKey {
-                    Button("Cancel") { showSettings = false }
+                    Button("BACK") { showSettings = false }
+                        .buttonStyle(PixelButtonStyle(color: GameColor.dim))
                     Spacer()
-                    Button("Remove key", role: .destructive) { chat.forgetKey(); showSettings = false }
+                    Button("DELETE") { chat.forgetKey(); showSettings = false }
+                        .buttonStyle(PixelButtonStyle(color: GameColor.red, textColor: GameColor.text))
                 }
             }
             Spacer()
@@ -163,24 +209,40 @@ struct ChatTab: View {
         chat.saveKey(keyDraft)
         keyDraft = ""
         showSettings = false
+        Chiptune.blip()
     }
 }
 
-struct ChatBubble: View {
+/// One line of the dialog log: a speaker tag, then the text.
+struct ChatLine: View {
     let line: ChatModel.Line
+    var onShown: () -> Void = {}
     var body: some View {
-        HStack {
-            if line.fromUser { Spacer(minLength: 40) }
-            Text(line.text)
-                .textSelection(.enabled)
-                .font(.system(size: 13))
-                .foregroundStyle(line.fromUser ? Color.white : (line.isError ? Color.red : Color.primary))
-                .padding(.horizontal, 10).padding(.vertical, 7)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(line.fromUser ? Palette.bodyDark : Color.primary.opacity(0.07))
-                )
-            if !line.fromUser { Spacer(minLength: 40) }
+        VStack(alignment: .leading, spacing: 4) {
+            Text(line.fromUser ? "YOU" : PetModel.name.uppercased())
+                .font(GameFont.title(8))
+                .foregroundStyle(line.fromUser ? GameColor.cyan : GameColor.yellow)
+            if line.fromUser {
+                Text(line.text).font(GameFont.body(19)).foregroundStyle(GameColor.text)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                TypewriterText(text: line.text, animate: line.isNew,
+                               color: line.isError ? GameColor.red : GameColor.text,
+                               onFinish: onShown)
+                    .textSelection(.enabled)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct ThinkingText: View {
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.3)) { ctx in
+            let n = Int(ctx.date.timeIntervalSinceReferenceDate / 0.3) % 4
+            Text("thinking" + String(repeating: ".", count: n))
+                .font(GameFont.body(19)).foregroundStyle(GameColor.dim)
         }
     }
 }
@@ -191,45 +253,64 @@ struct TimerTab: View {
     @ObservedObject var pomodoro: Pomodoro
 
     var body: some View {
-        VStack(spacing: 14) {
+        let focus = pomodoro.phase == .focus
+        let color = focus ? GameColor.red : GameColor.green
+        VStack(spacing: 16) {
             Spacer(minLength: 0)
-            ZStack {
-                Circle().stroke(Color.primary.opacity(0.08), lineWidth: 10)
-                Circle()
-                    .trim(from: 0, to: pomodoro.progress)
-                    .stroke(color, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .animation(.linear(duration: 0.4), value: pomodoro.progress)
-                VStack(spacing: 2) {
-                    Text(pomodoro.label)
-                        .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
-                    Text(pomodoro.phase == .focus ? "Focus" : "Break")
-                        .font(.callout).foregroundStyle(.secondary)
-                }
+            Text(focus ? "QUEST: FOCUS" : "REST AREA")
+                .font(GameFont.title(11))
+                .foregroundStyle(color)
+            Text(pomodoro.label)
+                .font(GameFont.title(36))
+                .foregroundStyle(GameColor.text)
+                .shadow(color: GameColor.outline, radius: 0, x: 3, y: 3)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(focus ? "PROGRESS" : "RECOVERING")
+                    .font(GameFont.title(7)).foregroundStyle(GameColor.dim)
+                SegmentBar(progress: pomodoro.progress, segments: 16, color: color)
             }
-            .frame(width: 170, height: 170)
-
             HStack(spacing: 10) {
-                Button(pomodoro.isRunning ? "Pause" : "Start") {
+                Button(pomodoro.isRunning ? "PAUSE" : "START") {
+                    Chiptune.blip()
                     pomodoro.isRunning ? pomodoro.pause() : pomodoro.start()
                 }
+                .buttonStyle(PixelButtonStyle())
                 .keyboardShortcut(.defaultAction)
-                Button("Reset") { pomodoro.reset() }
-                Button(pomodoro.phase == .focus ? "Skip to break" : "Skip break") { pomodoro.skip() }
+                Button("RESET") { pomodoro.reset() }
+                    .buttonStyle(PixelButtonStyle(color: GameColor.dim))
+                Button("SKIP") { pomodoro.skip() }
+                    .buttonStyle(PixelButtonStyle(color: GameColor.cyan))
             }
-            .controlSize(.large)
-
-            HStack(spacing: 16) {
-                Stepper("Focus \(pomodoro.focusMinutes)m", value: $pomodoro.focusMinutes, in: 1...120)
-                Stepper("Break \(pomodoro.restMinutes)m", value: $pomodoro.restMinutes, in: 1...60)
+            VStack(spacing: 8) {
+                MinutePicker(label: "FOCUS", value: $pomodoro.focusMinutes, range: 1...120)
+                MinutePicker(label: "BREAK", value: $pomodoro.restMinutes, range: 1...60)
             }
-            .font(.caption)
             .disabled(pomodoro.isRunning)
+            .opacity(pomodoro.isRunning ? 0.4 : 1)
             Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity)
     }
+}
 
-    private var color: Color { pomodoro.phase == .focus ? Palette.focus : Palette.rest }
+/// "FOCUS  ◀ 25 ▶ MIN" style setting row.
+struct MinutePicker: View {
+    let label: String
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(label).frame(width: 56, alignment: .leading).foregroundStyle(GameColor.dim)
+            Button("◀") { value = max(range.lowerBound, value - (value > 10 ? 5 : 1)) }
+            Text(String(format: "%3d", value)).foregroundStyle(GameColor.text).frame(width: 34)
+            Button("▶") { value = min(range.upperBound, value + (value >= 10 ? 5 : 1)) }
+            Text("MIN").foregroundStyle(GameColor.dim)
+        }
+        .font(GameFont.title(8))
+        .buttonStyle(.plain)
+        .foregroundStyle(GameColor.yellow)
+    }
 }
 
 // MARK: - Notes
@@ -237,13 +318,16 @@ struct TimerTab: View {
 struct NotesTab: View {
     @ObservedObject var notes: NotesModel
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("QUEST LOG").font(GameFont.title(10)).foregroundStyle(GameColor.yellow)
             TextEditor(text: $notes.text)
-                .font(.system(size: 13))
+                .font(GameFont.body(19))
+                .foregroundStyle(GameColor.text)
                 .scrollContentBackground(.hidden)
-                .padding(6)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.05)))
-            Text("Saved automatically.").font(.caption2).foregroundStyle(.secondary)
+                .padding(8)
+                .background(Rectangle().fill(GameColor.field))
+                .overlay(Rectangle().stroke(GameColor.border.opacity(0.5), lineWidth: 2))
+            Text("AUTO-SAVED").font(GameFont.title(7)).foregroundStyle(GameColor.dim)
         }
     }
 }

@@ -7,6 +7,7 @@ APP=build/DesktopPet.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp Info.plist "$APP/Contents/Info.plist"
+cp -R Resources/Fonts "$APP/Contents/Resources/Fonts"
 
 swiftc -O -target "$(uname -m)-apple-macos13.0" \
   -framework AppKit -framework SwiftUI -framework ServiceManagement \
