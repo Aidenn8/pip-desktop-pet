@@ -186,15 +186,24 @@ struct TimerHUD: View {
     }
 }
 
+/// Sleeping z's. All three stay on screen, dimmed, and one at a time (small to
+/// big) brightens, like a soft wave drifting upward. Calm enough to ignore, but
+/// still alive. Steps every 1.5 seconds, only while asleep.
 struct Zzz: View {
+    static let step: TimeInterval = 1.5
+    static let dim = 0.55
+
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            Text("z").font(GameFont.title(7)).offset(x: 0, y: 14)
-            Text("z").font(GameFont.title(8)).offset(x: 7, y: 6)
-            Text("Z").font(GameFont.title(10)).offset(x: 15, y: -3)
+        TimelineView(.periodic(from: .now, by: Self.step)) { ctx in
+            let lit = Int(ctx.date.timeIntervalSinceReferenceDate / Self.step) % 3
+            ZStack(alignment: .topLeading) {
+                Text("z").font(GameFont.title(7)).offset(x: 0, y: 14).opacity(lit == 0 ? 1 : Self.dim)
+                Text("z").font(GameFont.title(8)).offset(x: 7, y: 6).opacity(lit == 1 ? 1 : Self.dim)
+                Text("Z").font(GameFont.title(10)).offset(x: 15, y: -3).opacity(lit == 2 ? 1 : Self.dim)
+            }
+            .foregroundStyle(GameColor.text)
+            .shadow(color: GameColor.outline, radius: 0, x: 1, y: 1)
         }
-        .foregroundStyle(GameColor.text)
-        .shadow(color: GameColor.outline, radius: 0, x: 1, y: 1)
     }
 }
 

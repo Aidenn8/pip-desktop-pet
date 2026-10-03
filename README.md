@@ -27,7 +27,8 @@ focus timer, and a notepad.
   hover over it, it does a little hop and looks up at you with sparkly eyes. It
   looks happy when you click, determined during a focus session, and shows
   "..." while Claude is replying. It falls asleep after 10 minutes without mouse
-  movement. If a reply arrives while the menu is closed, a small cyan dot
+  movement, with little z's that softly light up one at a time. If a reply arrives
+  while the menu is closed, a small cyan dot
   appears on its ear.
 - **Calm by design.** Pip mostly sits still, with one small sway or hop every
   15 to 30 seconds. It never pops up text on its own.
