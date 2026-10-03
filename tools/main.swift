@@ -51,16 +51,16 @@ MainActor.assumeIsolated {
         render(v, size: CGSize(width: 120, height: 120), to: "\(out)/pet-\(name).png", dark: false)
     }
 
-    // Full overlay: speech bubble, and each card tab, in light and dark.
+    // Full overlay: resting pet, unread-reply dot, and each card tab, in light and dark.
     for dark in [false, true] {
         let suffix = dark ? "dark" : "light"
         let m = PetModel()
-        m.speech = m.greeting()
+        m.hasUnread = true
         let petLayer = { (m: PetModel) in
             PetView(m: m, eyes: m.eyes).padding(.trailing, Layout.margin).padding(.bottom, Layout.margin)
         }
         render(Backdrop(dark: dark) { RootView(m: m); petLayer(m) }, size: Layout.windowSize,
-               to: "\(out)/overlay-speech-\(suffix).png", dark: dark)
+               to: "\(out)/overlay-unread-\(suffix).png", dark: dark)
 
         for tab in FeatureCard.Tab.allCases {
             UserDefaults.standard.set(tab.rawValue, forKey: "tab")

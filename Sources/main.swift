@@ -40,7 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var blinkWork: DispatchWorkItem?
     var statusItem: NSStatusItem!
     var pollTimer: Timer?
-    var quipTimer: Timer?
+    var fidgetWork: DispatchWorkItem?
     var lastMouse = NSPoint.zero
     var cancellables = Set<AnyCancellable>()
     var lidWasClosed = false
@@ -100,14 +100,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         startTimers()
         scheduleBlink()
 
-        quipTimer = Timer.scheduledTimer(withTimeInterval: 45 * 60, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in
-                guard !self.model.expanded, self.model.mood == .idle else { return }
-                self.model.say(PetModel.quips.randomElement()!, for: 7)
-            }
-        }
-
         #if DEBUG
         if ProcessInfo.processInfo.environment["PIP_TEST_SLEEP"] != nil {
             let center = NSWorkspace.shared.notificationCenter
@@ -121,7 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             at(2.5) { center.post(name: NSWorkspace.didWakeNotification, object: nil) }
             at(2.8) { print("after wake:", state()) }
             at(3.5) {
-                print("pip says:", self.model.speech ?? "nothing")
+                print("hud paused:", !self.model.pomodoro.isRunning && self.model.pomodoro.remaining < self.model.pomodoro.total)
                 self.toggleVisible()  // user hides Pip from the menu
                 center.post(name: NSWorkspace.willSleepNotification, object: nil)
             }
@@ -133,10 +125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #endif
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            guard let self else { return }
-            self.model.say(self.model.greeting(), for: 6)
-        }
+        scheduleFidget()
     }
 
     // MARK: Away and back
@@ -169,7 +158,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pausedTimerWhileAway = model.pomodoro.isRunning
         if pausedTimerWhileAway { model.pomodoro.pause() }
         model.expanded = false
-        model.speech = nil
         model.notes.saveNow()
         panel.orderOut(nil)
         stopTimers()
@@ -184,13 +172,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         positionPanel()
         panel.orderFrontRegardless()
         startTimers()
-        let message = pausedTimerWhileAway
-            ? "Welcome back! Your quest is paused at \(model.pomodoro.label). Click me to resume."
-            : "Welcome back!"
+        // A paused timer shows as PAUSED in the status window next to Pip.
         pausedTimerWhileAway = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-            self?.model.say(message, for: 6)
-        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -242,43 +225,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Motion
 
-    /// Motion runs in the system compositor, not in this process. Steps are
-    /// discrete and snapped to the sprite's pixel size, like an 8-bit idle animation.
+    /// Pip mostly stays still: it blinks, follows the cursor, and now and then
+    /// does one small fidget (see scheduleFidget). All motion runs in the system
+    /// compositor and snaps to the sprite's pixel size.
     func applyMotion(for mood: Mood) {
         guard let layer = petHost?.layer else { return }
-        layer.removeAnimation(forKey: "bob")
-        layer.removeAnimation(forKey: "jump")
+        layer.removeAnimation(forKey: "alert")
+        guard mood == .alert else { return }
 
-        let px = Sprite.cell
-        func steps(_ values: [CGFloat], duration: CFTimeInterval) -> CAKeyframeAnimation {
-            let a = CAKeyframeAnimation(keyPath: "transform.translation.y")
-            a.values = values
-            a.calculationMode = .discrete
-            a.duration = duration
-            a.repeatCount = .infinity
-            return a
-        }
-
-        switch mood {
-        case .alert:
-            layer.add(steps([0, px, px * 2, px * 3, px * 2, px], duration: 0.42), forKey: "jump")
-        case .sleepy:
-            break  // perfectly still, just snoozing
-        case .happy, .thinking:
-            layer.add(steps([0, px], duration: 0.5), forKey: "bob")
-        default:
-            layer.add(steps([0, px], duration: 1.1), forKey: "bob")
-        }
-    }
-
-    /// A quick pixel hop when the pet is clicked.
-    func boing() {
-        guard let layer = petHost?.layer else { return }
+        // Timer finished: two little hops, then a pause, repeated until clicked.
         let px = Sprite.cell
         let a = CAKeyframeAnimation(keyPath: "transform.translation.y")
-        a.values = [px, px * 2, px * 3, px * 2, px, 0]
+        a.values = [0, px, px * 2, px, 0, px, px * 2, px, 0]
+        a.keyTimes = [0, 0.03, 0.06, 0.09, 0.12, 0.15, 0.18, 0.21, 0.24, 1].map { NSNumber(value: $0) }
         a.calculationMode = .discrete
-        a.duration = 0.3
+        a.duration = 2.5
+        a.repeatCount = .infinity
+        layer.add(a, forKey: "alert")
+    }
+
+    /// One small, quiet movement every 15 to 30 seconds while Pip is idle.
+    func scheduleFidget() {
+        fidgetWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.fidget()
+            self.scheduleFidget()
+        }
+        fidgetWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + .random(in: 15...30), execute: work)
+    }
+
+    private func fidget() {
+        guard panel.isVisible, !model.expanded, let layer = petHost?.layer,
+              [.idle, .focus].contains(model.mood) else { return }
+        let px = Sprite.cell
+        let a: CAKeyframeAnimation
+        if Bool.random() {
+            // Sway: lean one pixel left, then right, then settle.
+            a = CAKeyframeAnimation(keyPath: "transform.translation.x")
+            a.values = [0, -px, 0, px, 0]
+            a.duration = 1.6
+        } else {
+            // A tiny hop.
+            a = CAKeyframeAnimation(keyPath: "transform.translation.y")
+            a.values = [0, px, 0]
+            a.duration = 0.36
+        }
+        a.calculationMode = .discrete
+        layer.add(a, forKey: "fidget")
+    }
+
+    /// A one-pixel hop when the pet is clicked.
+    func boing() {
+        guard let layer = petHost?.layer else { return }
+        let a = CAKeyframeAnimation(keyPath: "transform.translation.y")
+        a.values = [Sprite.cell, 0]
+        a.calculationMode = .discrete
+        a.duration = 0.16
         layer.add(a, forKey: "hop")
     }
 
@@ -366,7 +370,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func startFocus() {
         model.pomodoro.reset()
         model.pomodoro.start()
-        model.say("Focus mode on. You've got this!", for: 4)
     }
     @objc func moveToThisScreen() { positionPanel() }
 
@@ -374,6 +377,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.set(tab.rawValue, forKey: "tab")
         if !panel.isVisible { positionPanel(); panel.orderFrontRegardless() }
         withAnimation(.spring(response: 0.38, dampingFraction: 0.8)) { model.expanded = true }
+        model.hasUnread = false
         panel.makeKey()
     }
 

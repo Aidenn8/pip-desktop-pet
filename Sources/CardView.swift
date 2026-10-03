@@ -15,12 +15,6 @@ struct RootView: View {
                     .padding(.trailing, Layout.margin)
                     .padding(.bottom, Layout.cardBottom)
                     .transition(.scale(scale: 0.9, anchor: .bottomTrailing).combined(with: .opacity))
-            } else if let speech = m.speech {
-                SpeechBubble(text: speech)
-                    .padding(.trailing, Layout.margin + 4)
-                    .padding(.bottom, Layout.margin + Layout.petSize + 6)
-                    .transition(.opacity)
-                    .allowsHitTesting(false)
             }
 
             PetGround()

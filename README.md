@@ -1,21 +1,23 @@
 # Pip: a desktop pet for macOS
 
-A small 8-bit mint slime with a leaf sprout that lives in the bottom-right corner of your screen,
+A small 8-bit pixel panda that lives in the bottom-right corner of your screen,
 above every window (including full-screen apps). It's styled like a retro video
-game: pixel-art sprite, RPG dialog windows, arcade fonts and chiptune sound
-effects. Click it to open a game-menu card with:
+game: pixel-art sprite, RPG-style menu windows, arcade fonts and chiptune sound
+effects. Pip never pops up text on its own. Click it to open a game-menu card with:
 
 - **Talk**: chat with Claude (Opus 5.5, low effort for quick replies). Paste an
   Anthropic API key the first time; it's stored in
   `~/Library/Application Support/DesktopPet/api_key` with owner-only permissions.
 - **Quest**: a Pomodoro focus/break timer with a segmented progress bar. While it
-  runs, a status window sits next to Pip, and Pip hops and plays a level-up
-  jingle when time's up.
+  runs or is paused, a status window sits next to Pip. When time's up, Pip
+  shows a "!" badge, hops twice every few seconds and plays a level-up jingle.
 - **Log**: a scratchpad "quest log" that saves automatically.
 
-Pip's eyes follow your cursor. It blinks, gets happy when you hover or click,
-looks focused during a timer, thinks while Claude replies, and falls asleep
-after 10 minutes without mouse movement. The window is click-through
+Pip mostly sits still. Its eyes follow your cursor, it blinks, and every 15 to
+30 seconds it does one small fidget (a sway or a tiny hop). It gets happy when
+you hover or click, looks focused during a timer, shows "..." while Claude
+replies, and falls asleep after 10 minutes without mouse movement. If a reply
+arrives while the card is closed, a small cyan dot appears on its ear. The window is click-through
 everywhere except the pet and the open card.
 
 Pip hides when the Mac goes to sleep or the laptop lid closes (even when an
@@ -42,7 +44,7 @@ tools/snapshot.sh     # renders preview PNGs of every mood and tab to build/snap
 - `Sources/main.swift`: the borderless, transparent, always-on-top panel, the
   menu bar item, cursor polling for eye tracking and click-through, and the
   Core Animation bobbing and breathing.
-- `Sources/PetView.swift`: the 20x16 pixel slime sprite, its faces per mood, and the dialog box.
+- `Sources/PetView.swift`: the 20x18 pixel panda sprite and its faces per mood.
 - `Sources/Theme.swift`: pixel fonts, colors, window frames, buttons, and the
   square-wave sound effects (synthesized in code, no audio files).
 - `Sources/CardView.swift`: the speech bubble and the Chat, Timer, Notes card.

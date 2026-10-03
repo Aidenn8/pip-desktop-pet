@@ -35,14 +35,15 @@ final class EyeState: ObservableObject {
     @Published var blink = false
 }
 
-/// Shared state for the pet, its speech bubble and the feature card.
+/// Shared state for the pet and the feature card.
 @MainActor
 final class PetModel: ObservableObject {
     static let name = "Pip"
 
     @Published var expanded = false
     @Published var hovering = false
-    @Published var speech: String?
+    /// A Claude reply arrived while the card was closed.
+    @Published var hasUnread = false
     @Published private(set) var mood: Mood = .idle
 
     let eyes = EyeState()
@@ -53,16 +54,13 @@ final class PetModel: ObservableObject {
     var lastPetted = Date.distantPast
     var idleSince = Date()
 
-    private var speechClear: DispatchWorkItem?
-
     init() {
-        pomodoro.onFinish = { [weak self] phase in
+        pomodoro.onFinish = { _ in
             Chiptune.levelUp()
-            self?.say(phase == .focus ? "QUEST COMPLETE! Take a break." : "Break's over. Back to it?", for: 8)
         }
-        chat.onReply = { [weak self] text in
+        chat.onReply = { [weak self] _ in
             guard let self, !self.expanded else { return }
-            self.say(String(text.prefix(140)) + (text.count > 140 ? "…" : ""), for: 10)
+            self.hasUnread = true
         }
     }
 
@@ -87,39 +85,11 @@ final class PetModel: ObservableObject {
         return .idle
     }
 
-    func say(_ text: String, for seconds: TimeInterval = 5) {
-        speechClear?.cancel()
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { speech = text }
-        let work = DispatchWorkItem { [weak self] in
-            withAnimation(.easeOut(duration: 0.25)) { self?.speech = nil }
-        }
-        speechClear = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
-    }
-
     func petClicked() {
         lastPetted = Date()
         if pomodoro.justFinished { pomodoro.acknowledge() }
         refreshMood()
         withAnimation(.spring(response: 0.38, dampingFraction: 0.8)) { expanded.toggle() }
-        if expanded { speech = nil }
+        if expanded { hasUnread = false }
     }
-
-    func greeting() -> String {
-        let hour = Calendar.current.component(.hour, from: Date())
-        switch hour {
-        case 5..<12: return "Good morning! Click me if you need anything."
-        case 12..<17: return "Hi! I'll be down here in the corner."
-        case 17..<22: return "Good evening! I'm here if you need me."
-        default: return "Up late? I'll keep you company."
-        }
-    }
-
-    static let quips = [
-        "Stretch break? Your shoulders will thank you.",
-        "Drink some water to restore HP.",
-        "Look at something far away for 20 seconds.",
-        "You're doing great.",
-        "Ready for a new quest? Click me for a focus timer.",
-    ]
 }

@@ -2,10 +2,10 @@ import SwiftUI
 
 // MARK: - Sprite data
 
-/// Pip as 8-bit pixel art: a 20x16 grid where each cell is one "pixel".
-/// The body is fixed; the face (eyes, mouth, cheeks) is drawn on top per mood.
 typealias Pix = (Int, Int, Character)
 
+/// Pip as 8-bit pixel art: a 20x18 grid where each cell is one "pixel".
+/// The body is fixed; the face (eye patches, eyes, nose, mouth, cheeks) is drawn on top per mood.
 enum Sprite {
     static let cell: CGFloat = 4
     static var cols: Int { body[0].count }
@@ -13,84 +13,98 @@ enum Sprite {
     static var width: CGFloat { cell * CGFloat(cols) }
     static var height: CGFloat { cell * CGFloat(rows) }
 
-    /// A mint jelly slime with a leaf sprout on top.
+    /// A little sitting panda.
     static let body: [String] = [
-        ".....KKK....KKK.....",
-        "....KGGGK..KGGGK....",
-        ".....KKGGKKGGKK.....",
-        "........KSSK........",
-        ".....KKKKSSKKKK.....",
-        "...KKLLLOOOOOOOKK...",
-        "..KLLHOOOOOOOOOOOK..",
-        ".KLHOOOOOOOOOOOOOOK.",
-        ".KLOOOOOOOOOOOOOODK.",
-        "KOOOOOOOOOOOOOOOOODK",
-        "KOOOOOOOOOOOOOOOOODK",
-        "KOOOOOOOOOOOOOOOOODK",
-        "KDOOOOOOOOOOOOOOOODK",
-        "KDDOOOOOOOOOOOOOODDK",
-        ".KDDDOOOOOOOOOODDDK.",
-        "..KKKKKKKKKKKKKKKK..",
+        ".KKKK..........KKKK.",
+        "KXXXXK........KXXXXK",
+        "KXXXKKKKKKKKKKKKXXXK",
+        ".KXKWWWWWWWWWWWWKXK.",
+        ".KWWWWWWWWWWWWWWWWK.",
+        "KWWWWWWWWWWWWWWWWWWK",
+        "KWWWWWWWWWWWWWWWWWWK",
+        "KWWWWWWWWWWWWWWWWWWK",
+        "KWWWWWWWWWWWWWWWWWWK",
+        "KWWWWWWWWWWWWWWWWWWK",
+        "KWWWWWWWWWWWWWWWWWWK",
+        "KGWWWWWWWWWWWWWWWWGK",
+        ".KGWWWWWWWWWWWWWWGK.",
+        "..KKKGWWWWWWWWGKKK..",
+        ".KXXXKWWWWWWWWKXXXK.",
+        ".KXXXKWWWWWWWWKXXXK.",
+        "..KXXXKKKKKKKKXXXK..",
+        "...KKK........KKK...",
     ]
 
     static let colors: [Character: Color] = [
-        "K": Color(red: 0.11, green: 0.17, blue: 0.23),  // outline
-        "D": Color(red: 0.18, green: 0.62, blue: 0.48),  // shade
-        "O": Color(red: 0.31, green: 0.82, blue: 0.63),  // body
-        "L": Color(red: 0.66, green: 0.96, blue: 0.84),  // highlight
-        "H": Color(red: 0.92, green: 1.00, blue: 0.97),  // shine
-        "G": Color(red: 0.42, green: 0.75, blue: 0.29),  // leaf
-        "S": Color(red: 0.55, green: 0.35, blue: 0.17),  // stem
-        "W": .white,
-        "P": Color(red: 0.08, green: 0.10, blue: 0.16),  // pupil
-        "C": Color(red: 1.00, green: 0.50, blue: 0.62),  // cheek
-        "M": Color(red: 0.48, green: 0.12, blue: 0.17),  // open mouth
+        "K": Color(red: 0.09, green: 0.09, blue: 0.12),  // outline
+        "X": Color(red: 0.19, green: 0.19, blue: 0.24),  // black fur
+        "W": Color(red: 0.97, green: 0.97, blue: 0.94),  // white fur
+        "G": Color(red: 0.80, green: 0.80, blue: 0.78),  // fur shade
+        "E": .white,                                     // eye
+        "P": Color(red: 0.05, green: 0.05, blue: 0.08),  // pupil
+        "C": Color(red: 1.00, green: 0.55, blue: 0.65),  // cheek
+        "M": Color(red: 0.55, green: 0.15, blue: 0.20),  // open mouth
     ]
 
-    static let leftEye = 5, rightEye = 12, eyeTop = 8
-    /// Row of the mouth and cheeks, just under the eyes.
-    static var mouthRow: Int { eyeTop + 4 }
-    static let cheeks = [(3, eyeTop + 4), (4, eyeTop + 4), (15, eyeTop + 4), (16, eyeTop + 4)]
+    /// Left columns of the two eye patches, and the patch's top row.
+    static let leftPatch = 3, rightPatch = 12, eyeTop = 6
+    static let cheeks = [(2, 11), (3, 11), (16, 11), (17, 11)]
 
     /// Face pixels for a mood: (column, row, color key).
     static func face(mood: Mood, gaze: (x: Int, y: Int), blink: Bool) -> [Pix] {
-        let e = eyeTop, m = mouthRow
-        let K: Character = "K", M: Character = "M", W: Character = "W", P: Character = "P"
+        let e = eyeTop
+        let X: Character = "X", K: Character = "K", E: Character = "E", P: Character = "P"
+        let G: Character = "G", M: Character = "M"
         var px: [Pix] = []
-        for ex in [leftEye, rightEye] {
-            switch mood {
-            case .happy:  // ^ ^
-                px += [(ex, e + 2, K), (ex + 1, e + 1, K), (ex + 2, e + 2, K)] as [Pix]
-            case .sleepy:  // peacefully closed
-                px += [(ex, e + 2, K), (ex + 1, e + 2, K), (ex + 2, e + 2, K)] as [Pix]
-            case _ where blink:
-                px += [(ex, e + 2, K), (ex + 1, e + 2, K), (ex + 2, e + 2, K)] as [Pix]
-            case .focus:  // heavy lids, determined
-                for c in 0..<3 { px.append((ex + c, e + 1, K)) }
-                for r in (e + 2)...(e + 3) { for c in 0..<3 { px.append((ex + c, r, W)) } }
-                px.append((ex + gaze.x, e + 2, P))
-                px.append((ex + gaze.x, e + 3, P))
-            case .alert:  // wide open, tiny pupils
-                for r in (e - 1)...(e + 3) { for c in 0..<3 { px.append((ex + c, r, W)) } }
-                px.append((ex + 1, e + 1, P))
-            default:  // idle / thinking: eyes follow the cursor
-                let g = mood == .thinking ? (x: 2, y: 0) : gaze
-                for r in e...(e + 3) { for c in 0..<3 { px.append((ex + c, r, W)) } }
-                px.append((ex + g.x, e + g.y, P))
-                px.append((ex + g.x, e + g.y + 1, P))
+
+        // Droopy panda eye patches: 5x5, missing the top-outer and bottom-inner corners.
+        for (left, outerTop, innerBottom) in [(leftPatch, leftPatch, leftPatch + 4),
+                                              (rightPatch, rightPatch + 4, rightPatch)] {
+            for r in e..<(e + 5) {
+                for c in left..<(left + 5) {
+                    if (r == e && c == outerTop) || (r == e + 4 && c == innerBottom) { continue }
+                    px.append((c, r, X))
+                }
             }
         }
+
+        // Eyes sit in the 3x3 middle of each patch.
+        for ex in [leftPatch + 1, rightPatch + 1] {
+            let top = e + 1
+            switch mood {
+            case .happy:  // ^ ^
+                px += [(ex, top + 1, E), (ex + 1, top, E), (ex + 2, top + 1, E)]
+            case .sleepy:  // peacefully closed
+                px += [(ex, top + 1, G), (ex + 1, top + 1, G), (ex + 2, top + 1, G)]
+            case _ where blink:
+                px += [(ex, top + 1, G), (ex + 1, top + 1, G), (ex + 2, top + 1, G)]
+            case .focus:  // half-closed, determined
+                for r in (top + 1)...(top + 2) { for c in 0..<3 { px.append((ex + c, r, E)) } }
+                px.append((ex + gaze.x, top + 1, P))
+            case .alert:  // wide open, centered pupil
+                for r in top...(top + 2) { for c in 0..<3 { px.append((ex + c, r, E)) } }
+                px.append((ex + 1, top + 1, P))
+            default:  // idle / thinking: eyes follow the cursor
+                let g = mood == .thinking ? (x: 2, y: 0) : gaze
+                for r in top...(top + 2) { for c in 0..<3 { px.append((ex + c, r, E)) } }
+                px.append((ex + g.x, top + g.y, P))
+            }
+        }
+
+        // Nose, then mouth just below it.
+        px += [(9, e + 4, X), (10, e + 4, X)]
+        let m = e + 5
         switch mood {
         case .happy:
-            px += [(8, m, K), (9, m, M), (10, m, M), (11, m, K), (9, m + 1, M), (10, m + 1, M)] as [Pix]
+            px += [(8, m, K), (9, m, M), (10, m, M), (11, m, K), (9, m + 1, M), (10, m + 1, M)]
         case .alert:
-            px += [(9, m, M), (10, m, M), (9, m + 1, M), (10, m + 1, M)] as [Pix]
+            px += [(9, m, M), (10, m, M), (9, m + 1, M), (10, m + 1, M)]
         case .thinking:
-            px += [(10, m + 1, K), (11, m + 1, K)] as [Pix]
+            px += [(10, m + 1, K), (11, m + 1, K)]
         case .sleepy, .focus:
-            px += [(9, m + 1, K), (10, m + 1, K)] as [Pix]
+            px += [(9, m + 1, K), (10, m + 1, K)]
         case .idle:
-            px += [(8, m, K), (9, m + 1, K), (10, m + 1, K), (11, m, K)] as [Pix]
+            px += [(8, m, K), (9, m + 1, K), (10, m + 1, K), (11, m, K)]
         }
         return px
     }
@@ -136,10 +150,11 @@ struct PetView: View {
                 case .sleepy: Zzz()
                 case .thinking: ThinkingDots()
                 case .alert: AlertMark()
-                default: EmptyView()
+                default:
+                    if m.hasUnread { UnreadDot() }
                 }
             }
-            .offset(x: Layout.petSize - (mood == .sleepy ? 32 : 30), y: 0)
+            .offset(x: Layout.petSize - (mood == .sleepy ? 27 : 30), y: 0)
         }
         .frame(width: Layout.petSize, height: Layout.petSize, alignment: .topLeading)
         .contentShape(Rectangle())
@@ -165,11 +180,11 @@ struct TimerHUD: View {
     @ObservedObject var pomodoro: Pomodoro
 
     var body: some View {
-        if pomodoro.isRunning {
-            let color = pomodoro.phase == .focus ? GameColor.red : GameColor.green
+        if pomodoro.isRunning || pomodoro.remaining < pomodoro.total {
+            let color = pomodoro.isRunning ? (pomodoro.phase == .focus ? GameColor.red : GameColor.green) : GameColor.dim
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
-                    Text(pomodoro.phase == .focus ? "FOCUS" : "REST")
+                    Text(!pomodoro.isRunning ? "PAUSED" : (pomodoro.phase == .focus ? "FOCUS" : "REST"))
                         .font(GameFont.title(7)).foregroundStyle(color)
                     Text(pomodoro.label)
                         .font(GameFont.title(9)).foregroundStyle(GameColor.text)
@@ -184,14 +199,13 @@ struct TimerHUD: View {
 
 struct Zzz: View {
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            Text("z").font(GameFont.title(8)).offset(x: 0, y: 0)
-            Text("z").font(GameFont.title(10)).offset(x: 9, y: -10)
-            Text("Z").font(GameFont.title(12)).offset(x: 20, y: -22)
+        ZStack(alignment: .topLeading) {
+            Text("z").font(GameFont.title(7)).offset(x: 0, y: 14)
+            Text("z").font(GameFont.title(8)).offset(x: 7, y: 6)
+            Text("Z").font(GameFont.title(10)).offset(x: 15, y: -3)
         }
         .foregroundStyle(GameColor.text)
         .shadow(color: GameColor.outline, radius: 0, x: 1, y: 1)
-        .offset(y: 30)
     }
 }
 
@@ -251,30 +265,14 @@ struct TypewriterText: View {
     }
 }
 
-/// Dialog box above Pip, with a name tag like a game character.
-struct SpeechBubble: View {
-    let text: String
+/// Small pixel dot meaning "a reply from Claude is waiting". Click Pip to read it.
+struct UnreadDot: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(PetModel.name.uppercased())
-                .font(GameFont.title(8))
-                .foregroundStyle(GameColor.yellow)
-            TypewriterText(text: text)
-                .multilineTextAlignment(.leading)
-            Text("▼").font(GameFont.title(7)).foregroundStyle(GameColor.yellow)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-        }
-        .padding(.horizontal, 14).padding(.top, 13).padding(.bottom, 10)
-        .frame(width: 250, alignment: .leading)
-        .pixelWindow()
-        .overlay(alignment: .bottomTrailing) {
-            // Stepped pixel tail pointing down at Pip
-            VStack(spacing: 0) {
-                Rectangle().fill(GameColor.border).frame(width: 12, height: 3)
-                Rectangle().fill(GameColor.border).frame(width: 8, height: 3)
-                Rectangle().fill(GameColor.border).frame(width: 4, height: 3)
-            }
-            .offset(x: -44, y: 8)
-        }
+        Rectangle()
+            .fill(GameColor.cyan)
+            .frame(width: 8, height: 8)
+            .padding(2)
+            .background(Rectangle().fill(GameColor.outline))
+            .offset(x: 12, y: 8)
     }
 }
