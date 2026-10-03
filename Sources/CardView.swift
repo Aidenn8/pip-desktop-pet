@@ -17,11 +17,6 @@ struct RootView: View {
                     .transition(.scale(scale: 0.9, anchor: .bottomTrailing).combined(with: .opacity))
             }
 
-            PetGround()
-                .padding(.trailing, Layout.margin)
-                .padding(.bottom, Layout.margin - 4)
-                .allowsHitTesting(false)
-
             TimerHUD(pomodoro: m.pomodoro)
                 .padding(.trailing, Layout.margin + Layout.petSize + 4)
                 .padding(.bottom, Layout.margin + 6)

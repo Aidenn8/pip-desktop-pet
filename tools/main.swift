@@ -44,7 +44,7 @@ MainActor.assumeIsolated {
         m.forceMood(mood)
         m.eyes.look = CGVector(dx: -1, dy: 1)
         let v = Backdrop(dark: false) {
-            ZStack { PetGround(); PetView(m: m, eyes: m.eyes) }
+            PetView(m: m, eyes: m.eyes)
                 .frame(width: Layout.petSize, height: Layout.petSize)
                 .padding(8)
         }.frame(width: 120, height: 120)

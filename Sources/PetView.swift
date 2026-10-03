@@ -155,20 +155,6 @@ struct PetView: View {
     }
 }
 
-/// A pixel shadow that stays on the ground while Pip bobs.
-struct PetGround: View {
-    var body: some View {
-        Canvas { ctx, _ in
-            let shade = Color.black.opacity(0.28)
-            let mid = Layout.petSize / 2
-            ctx.fill(Path(CGRect(x: mid - 28, y: 0, width: 56, height: 4)), with: .color(shade))
-            ctx.fill(Path(CGRect(x: mid - 20, y: 4, width: 40, height: 3)), with: .color(shade))
-        }
-        .frame(width: Layout.petSize, height: 7)
-        .frame(width: Layout.petSize, height: Layout.petSize, alignment: .bottom)
-    }
-}
-
 /// Status window to the left of Pip while a timer runs: phase, time and a segment bar.
 struct TimerHUD: View {
     @ObservedObject var pomodoro: Pomodoro
