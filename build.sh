@@ -10,7 +10,7 @@ cp Info.plist "$APP/Contents/Info.plist"
 cp -R Resources/Fonts "$APP/Contents/Resources/Fonts"
 
 swiftc -O -target "$(uname -m)-apple-macos13.0" \
-  -framework AppKit -framework SwiftUI -framework ServiceManagement \
+  -framework AppKit -framework SwiftUI -framework ServiceManagement -framework IOKit \
   Sources/*.swift -o "$APP/Contents/MacOS/DesktopPet"
 
 # Ad-hoc signature so macOS treats it as a proper app locally (not for distribution).

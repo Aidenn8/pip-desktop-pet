@@ -10,6 +10,13 @@ final class NotesModel: ObservableObject {
 
     init() { text = (try? String(contentsOf: Self.fileURL, encoding: .utf8)) ?? "" }
 
+    /// Write any pending edit right away (used when the app quits).
+    func saveNow() {
+        saveWork?.cancel()
+        saveWork = nil
+        try? text.write(to: Self.fileURL, atomically: true, encoding: .utf8)
+    }
+
     private func scheduleSave() {
         saveWork?.cancel()
         let snapshot = text

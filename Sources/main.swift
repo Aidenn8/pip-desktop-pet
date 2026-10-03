@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import IOKit
 import ServiceManagement
 import SwiftUI
 
@@ -42,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var quipTimer: Timer?
     var lastMouse = NSPoint.zero
     var cancellables = Set<AnyCancellable>()
+    var lidWasClosed = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         GameFont.register()
@@ -60,10 +62,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         makeStatusItem()
         positionPanel()
 
+        // Quit when the Mac goes to sleep. Screen lock and the screensaver
+        // don't sleep the Mac, so Pip keeps running through those.
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification,
+                                                          object: nil, queue: .main) { _ in
+            Task { @MainActor in NSApp.terminate(nil) }
+        }
+
+        // Closing the lid doesn't always sleep the Mac (for example with an
+        // external display attached), but it always changes the screen setup.
+        // Quit when the lid goes from open to closed.
+        lidWasClosed = Self.isLidClosed()
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
-            Task { @MainActor in self.positionPanel() }
+            Task { @MainActor in
+                let closed = Self.isLidClosed()
+                defer { self.lidWasClosed = closed }
+                if closed && !self.lidWasClosed { NSApp.terminate(nil); return }
+                self.positionPanel()
+            }
         }
 
         // Poll the cursor ~20x a second. This drives eye tracking, hover, and
@@ -90,10 +108,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["PIP_TEST_SLEEP"] != nil {
+            print("lid closed now:", Self.isLidClosed())
+            model.notes.text += "\nsaved-before-sleep"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                print("posting willSleep")
+                NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.willSleepNotification, object: nil)
+            }
+        }
+        #endif
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
             guard let self else { return }
             self.model.say(self.model.greeting(), for: 6)
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        model.notes.saveNow()
+    }
+
+    /// Reads the laptop lid sensor. Always false on Macs without a lid.
+    static func isLidClosed() -> Bool {
+        let root = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
+        guard root != 0 else { return false }
+        defer { IOObjectRelease(root) }
+        let value = IORegistryEntryCreateCFProperty(root, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue()
+        return (value as? Bool) ?? false
     }
 
     private func makePanel() {
