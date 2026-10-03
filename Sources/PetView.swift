@@ -12,6 +12,8 @@ enum Sprite {
     static var rows: Int { body.count }
     static var width: CGFloat { cell * CGFloat(cols) }
     static var height: CGFloat { cell * CGFloat(rows) }
+    /// Space between the sprite and the edge of the pet area, used on both the right and bottom.
+    static var sideGap: CGFloat { (Layout.petSize - width) / 2 }
 
     /// A little sitting red panda with its ringed tail curled up behind it.
     static let body: [String] = [
@@ -68,6 +70,9 @@ enum Sprite {
             switch mood {
             case .happy:  // ^ ^
                 px += [(ex, e + 1, K), (ex + 1, e, K), (ex + 2, e + 1, K)]
+            case .curious:  // sparkly eyes looking right at you: two glints
+                for r in e...(e + 2) { for c in 0..<3 { px.append((ex + c, r, P)) } }
+                px += [(ex, e, E), (ex + 2, e + 2, E)]
             case .sleepy:  // peacefully closed
                 px += [(ex, e + 1, K), (ex + 1, e + 1, K), (ex + 2, e + 1, K)]
             case _ where blink:
@@ -91,6 +96,8 @@ enum Sprite {
         switch mood {
         case .happy:
             px += [(7, m, K), (8, m, M), (9, m, M), (10, m, K), (8, m + 1, M), (9, m + 1, M)]
+        case .curious:  // small curious "oh"
+            px += [(8, m, M), (9, m, M)]
         case .alert:
             px += [(8, m, M), (9, m, M), (8, m + 1, M), (9, m + 1, M)]
         case .thinking:
@@ -117,7 +124,7 @@ struct PetView: View {
         let mood = m.mood
         let gaze = (x: Int(eyes.look.dx) + 1, y: 1 - Int(eyes.look.dy))
         let face = Sprite.face(mood: mood, gaze: gaze, blink: eyes.blink)
-        let cheekAlpha = mood == .happy ? 1.0 : 0.0
+        let cheekAlpha = mood == .happy ? 1.0 : (mood == .curious ? 0.6 : 0.0)
 
         ZStack(alignment: .topLeading) {
             Canvas { ctx, _ in
@@ -136,7 +143,8 @@ struct PetView: View {
                 for (c, r, ch) in face { dot(c, r, Sprite.colors[ch]!) }
             }
             .frame(width: Sprite.width, height: Sprite.height)
-            .offset(x: (Layout.petSize - Sprite.width) / 2, y: Layout.petSize - Sprite.height - 6)
+            // Same gap below the sprite as beside it, so Pip sits evenly in the corner.
+            .offset(x: Sprite.sideGap, y: Layout.petSize - Sprite.height - Sprite.sideGap)
 
             // Mood decorations, top-right of the head
             Group {

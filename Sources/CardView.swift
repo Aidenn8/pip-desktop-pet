@@ -19,7 +19,7 @@ struct RootView: View {
 
             TimerHUD(pomodoro: m.pomodoro)
                 .padding(.trailing, Layout.margin + Layout.petSize + 4)
-                .padding(.bottom, Layout.margin + 6)
+                .padding(.bottom, Layout.margin + Sprite.sideGap)
                 .allowsHitTesting(false)
         }
         .frame(width: Layout.windowSize.width, height: Layout.windowSize.height)

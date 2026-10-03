@@ -276,6 +276,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         layer.add(a, forKey: "fidget")
     }
 
+    /// When the cursor arrives, Pip perks up with a quick two-pixel hop. A short
+    /// cooldown keeps quick back-and-forth movements from making it bounce nonstop.
+    static let hoverHopCooldown: TimeInterval = 0.5
+    private var lastHoverHop = Date.distantPast
+    func hoverHop() {
+        guard Date().timeIntervalSince(lastHoverHop) > Self.hoverHopCooldown,
+              let layer = petHost?.layer else { return }
+        lastHoverHop = Date()
+        let px = Sprite.cell
+        let a = CAKeyframeAnimation(keyPath: "transform.translation.y")
+        a.values = [px, px * 2, px, 0]
+        a.calculationMode = .discrete
+        a.duration = 0.26
+        layer.add(a, forKey: "hop")
+    }
+
     /// A one-pixel hop when the pet is clicked.
     func boing() {
         guard let layer = petHost?.layer else { return }
@@ -324,7 +340,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let overCard = model.expanded && Layout.cardRect.contains(local)
         let interactive = overPet || overCard
         if panel.ignoresMouseEvents == interactive { panel.ignoresMouseEvents = !interactive }
-        if model.hovering != overPet { model.hovering = overPet; model.refreshMood() }
+        if model.hovering != overPet {
+            model.hovering = overPet
+            model.refreshMood()
+            if overPet { hoverHop() }
+        }
 
         guard p != lastMouse else { return }
         lastMouse = p

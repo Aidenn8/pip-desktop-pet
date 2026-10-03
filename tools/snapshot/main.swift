@@ -51,6 +51,16 @@ MainActor.assumeIsolated {
         render(v, size: CGSize(width: 120, height: 120), to: "\(out)/pet-\(name).png", dark: false)
     }
 
+    // Hovered: the curious face.
+    do {
+        let m = PetModel()
+        m.forceMood(.curious)
+        m.hovering = true
+        let v = Backdrop(dark: false) { PetView(m: m, eyes: m.eyes).frame(width: Layout.petSize, height: Layout.petSize).padding(8) }
+            .frame(width: 120, height: 120)
+        render(v, size: CGSize(width: 120, height: 120), to: "\(out)/pet-hover.png", dark: false)
+    }
+
     // All moods in one strip, for the README.
     let strip = HStack(spacing: 18) {
         ForEach(Array(moods.enumerated()), id: \.offset) { _, item in

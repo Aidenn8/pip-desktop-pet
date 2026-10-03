@@ -23,8 +23,9 @@ focus timer, and a notepad.
   bar. While a timer runs or is paused, a small status window sits next to Pip.
   When time's up, Pip shows a "!" badge, hops, and plays a level-up jingle.
 - **Log.** A scratchpad that saves automatically.
-- **A pet with moods.** Pip's eyes follow your cursor and it blinks. It looks
-  happy when you hover or click, determined during a focus session, and shows
+- **A pet with moods.** Pip's eyes follow your cursor and it blinks. When you
+  hover over it, it does a little hop and looks up at you with sparkly eyes. It
+  looks happy when you click, determined during a focus session, and shows
   "..." while Claude is replying. It falls asleep after 10 minutes without mouse
   movement. If a reply arrives while the menu is closed, a small cyan dot
   appears on its ear.
